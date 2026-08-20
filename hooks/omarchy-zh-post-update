@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+if ! "$HOME/.local/bin/omarchy-zh-sync" --quiet; then
+  notify-send -u critical "Omarchy 中文同步失败" "请运行 omarchy-zh-sync 查看详细错误。"
+fi

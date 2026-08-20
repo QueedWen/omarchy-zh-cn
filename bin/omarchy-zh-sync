@@ -1,0 +1,1295 @@
+#!/usr/bin/env node
+
+// Rebuild the user's Omarchy 4 Chinese plugin clones from the current packaged
+// sources, then apply display-string translations. System files are read-only.
+
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const { execFileSync } = require("child_process");
+
+const quiet = process.argv.includes("--quiet");
+const noRestart = process.argv.includes("--no-restart");
+const adoptExisting = process.argv.includes("--adopt-existing");
+const home = os.homedir();
+const user = process.env.USER || path.basename(home);
+const pluginRoot = path.join(home, ".config/omarchy/plugins");
+const menuDefault = "/usr/share/omarchy/default/omarchy/omarchy-menu.jsonc";
+const menuUser = path.join(home, ".config/omarchy/extensions/omarchy-menu.jsonc");
+const stateDir = path.join(home, ".local/state/omarchy-zh");
+const keybindingsSource = "/usr/share/omarchy/bin/omarchy-menu-keybindings";
+const keybindingsZh = path.join(home, ".local/bin/omarchy-menu-keybindings-zh");
+
+const pluginIds = [
+  "omarchy.audio", "omarchy.bluetooth", "omarchy.clock", "omarchy.monitor",
+  "omarchy.network", "omarchy.power", "omarchy.weather", "omarchy.agents",
+  "omarchy.menu", "omarchy.notifications",
+  "omarchy.tray", "omarchy.indicators", "omarchy.system-update", "omarchy.lock", "omarchy.polkit",
+  "omarchy.clipboard", "omarchy.emojis", "omarchy.image-picker",
+  "omarchy.reminders", "omarchy.speedtest", "omarchy.disk-speedtest",
+  "omarchy.wifiqr"
+];
+
+const supportedArgs = new Set(["--quiet", "--no-restart", "--adopt-existing", "--help"]);
+for (const arg of process.argv.slice(2)) {
+  if (!supportedArgs.has(arg)) throw new Error(`未知参数：${arg}`);
+}
+if (process.argv.includes("--help")) {
+  console.log(`用法：omarchy-zh-sync [--quiet] [--no-restart] [--adopt-existing]
+
+从当前安装的 Omarchy 4 源文件重建简体中文用户插件。
+  --quiet           仅在失败时输出
+  --no-restart      同步后不重启 Omarchy Shell
+  --adopt-existing  接管同名且来源匹配的现有插件克隆`);
+  process.exit(0);
+}
+
+const zh = {
+  "Audio": "音频", "OUTPUT": "输出", "INPUT": "输入", "SOURCES": "应用音源",
+  "Output": "输出", "Source": "音源", "Stream": "应用音频", "Microphone": "麦克风",
+  "Mute": "静音", "Unmute": "取消静音", "Muted": "已静音", "Silenced": "无声",
+  "Concert hall": "声量全开", "Party mode": "派对音量", "Cranked up": "较大音量",
+  "Steady groove": "适中音量", "Easy listening": "舒适音量", "Murmur": "轻声",
+  "Whisper": "微声", "Unknown": "未知",
+
+  "Bluetooth": "蓝牙", "CONNECTED": "已连接", "PAIRED": "已配对", "AVAILABLE": "可用设备",
+  "Connect": "连接", "Connected": "已连接", "Disconnect": "断开连接", "Forget": "忽略设备",
+  "Pair": "配对", "No Bluetooth adapter": "未找到蓝牙适配器", "No adapter": "无蓝牙适配器",
+  "Turned Off": "已关闭", "Turn Bluetooth off": "关闭蓝牙", "Turn Bluetooth on": "打开蓝牙",
+  "Turn Bluetooth on to scan": "打开蓝牙以扫描设备", "Forgetting…": "正在忽略…",
+  "Disconnecting…": "正在断开…", "Connecting…": "正在连接…",
+  "Herding headsets": "正在寻找耳机", "Pairing mysteries": "正在准备配对",
+  "Polishing packets": "正在整理数据", "Streaming vikings": "正在扫描设备",
+  "Summoning speakers": "正在寻找扬声器", "Taming radios": "正在调试无线电",
+  "Untangling wires": "正在整理连接", "Wrangling codecs": "正在准备编解码器",
+
+  "Back to today": "返回今天", "BORN": "出生年份", "year": "年份", "LIVE TO": "预计寿命",
+  "LIFE": "人生", "Memento Mori": "珍惜此刻", "W": "周", "Clock": "日期与时间",
+  "Start weeks on ": "每周开始于",
+  "Previous month": "上个月", "Next month": "下个月",
+
+  "Display": "显示器", "BRIGHTNESS": "亮度", "FIXED BRIGHTNESS": "固定亮度",
+  "TEXT SIZE": "文字大小", "SCALE": "缩放", "DISPLAYS": "显示器",
+  "Sun blast": "阳光般明亮", "Solar flare": "非常明亮", "Golden hour": "明亮",
+  "Even day": "日间亮度", "Soft glow": "柔和亮度", "Lamp light": "灯光亮度",
+  "Candlelit": "烛光亮度", "Night owl": "夜间亮度",
+
+  "Network": "网络", "Show QR code": "显示二维码", "Run a speed test": "运行网络测速",
+  "Ethernet": "以太网", "Disconnected": "未连接", "No connection": "无网络连接",
+  "NOT CONNECTED": "未连接", "Ping": "延迟", "Packet Loss": "丢包率",
+  "Receiving": "接收速度", "Sending": "发送速度", "Downloaded": "已下载",
+  "Uploaded": "已上传", "IP Address": "IP 地址", "Copy IP": "复制 IP 地址",
+  "Gateway": "网关", "Copy gateway": "复制网关", "AUTOMATIC": "自动",
+  "Automatic": "自动", "DNS PROVIDER": "DNS 服务商", "Use DNS from DHCP": "使用 DHCP 提供的 DNS",
+  "Set DNS to Cloudflare": "将 DNS 设为 Cloudflare", "Set DNS to Google": "将 DNS 设为 Google",
+  "Set custom DNS servers": "设置自定义 DNS 服务器", "SCANNING WI-FI…": "正在扫描无线网络…",
+  "Forget network": "忽略此网络", "Identity (user@domain)": "身份（用户@域名）",
+  "Passphrase": "密码", "Copy to clipboard": "复制到剪贴板", "Custom": "自定义",
+  "KNOWN NETWORKS": "已保存的网络", "OTHER NETWORKS": "其他网络", "WI-FI BAND": "无线频段",
+  "WI-FI BAND: ": "无线频段：", "Let Wi-Fi pick the band": "自动选择无线频段",
+  "Stay on ": "固定使用", "Timeout": "连接超时", "Passphrase required": "需要输入密码",
+  "Wrong password": "密码错误", "Network lost": "网络连接已断开",
+  "Connection failed": "连接失败", "Failed to connect": "无法连接",
+  "Timed out connecting": "连接超时", "Timed out disconnecting": "断开连接超时",
+  "Timed out forgetting": "忽略网络超时", "Failed": "失败",
+  "Bending light": "正在传输信号", "Counting collisions": "正在检查网络",
+  "Handling packets": "正在处理数据包", "Hauling bytes": "正在传输数据",
+  "Routing crumbs": "正在寻找路由", "Sorting frames": "正在整理数据帧",
+  "Wiring bits": "正在建立连接",
+
+  "Power": "电源", "Battery": "电池", "Battery size": "电池容量", "Charge cycles": "充电循环次数",
+  "Charge limit": "充电上限", "Time left": "剩余时间", "Time to full": "充满所需时间",
+  "Battery state": "电池状态", "Discharging": "正在放电", "Charging": "正在充电",
+  "Fully charged": "已充满", "FULLY CHARGED": "已充满", "POWER PROFILE": "电源模式",
+  "Threshold": "充电保护", "On battery": "使用电池",
+  "Amassing watts": "正在积蓄电量", "Bleeding amps": "正在消耗电量",
+  "Burning electrons": "正在消耗电量", "Draining watts": "正在放电",
+  "Guzzling volts": "正在快速耗电", "Hoarding joules": "正在储存电量",
+  "Holding": "保持电量", "Inhaling kilowatts": "正在快速充电",
+  "Injecting electrons": "正在充电", "Munching reserves": "正在使用储备电量",
+  "Pouring juice": "正在充电", "Pumping power": "正在补充电量",
+  "Sipping juice": "低功耗运行", "Slurping power": "正在耗电",
+  "Soaking amps": "正在吸收电量", "Spending coulombs": "正在使用电量",
+  "Spending joules": "正在使用电量", "Sucking volts": "正在耗电",
+  "Topping reserves": "即将充满",
+
+  "Weather": "天气", "Search city": "搜索城市", "FEELS": "体感", "WIND": "风速",
+  "HUMID": "湿度", "Fetching forecast…": "正在获取天气预报…",
+  "Monday": "星期一", "Tuesday": "星期二", "Wednesday": "星期三", "Thursday": "星期四",
+  "Friday": "星期五", "Saturday": "星期六", "Sunday": "星期日",
+
+  "Agents": "AI 助手", "No AI coding subscriptions found.\nAgents show up here once you've used them.": "未找到 AI 编程订阅。\n使用相应助手后，它们会显示在这里。",
+  "BALANCE": "余额", "Prepaid credits": "预付额度", "LIMITS": "使用限额",
+  "TOKENS BY DAY": "每日令牌用量", "TOKENS BY MODEL": "各模型令牌用量",
+  "Today": "今天", "Weekly": "每周", "Monthly": "每月", "Session": "会话",
+  "Session (5-hour)": "会话（5 小时）", "Subscription": "订阅", "Limit": "限额",
+  "Resets in ": "重置倒计时：", "Merged from ": "合并来源：",
+  "Mon": "周一", "Tue": "周二", "Wed": "周三", "Thu": "周四", "Fri": "周五",
+  "Sat": "周六", "Sun": "周日",
+
+  "Pending Omarchy Updates": "有可用的 Omarchy 更新", "System tray": "系统托盘",
+  "Tray icons": "托盘图标", "Pinned icons stay visible. Hidden icons never show.": "固定的图标始终显示；隐藏的图标不会显示。",
+  "No tray items reporting.": "当前没有托盘项目。", "Omarchy update": "Omarchy 更新",
+
+  "Indicators": "状态指示器", "Manual state indicators": "手动状态指示器",
+  "Choose which indicators this widget instance should show. Leave empty to show all indicators.": "选择此组件要显示的状态指示器；留空则显示全部。",
+  "All indicators": "全部状态指示器", "Search indicators...": "搜索状态指示器…",
+  "No indicators": "没有状态指示器", "Voice typing status": "语音输入状态",
+  "Screen recording": "屏幕录制", "Screen Recording": "屏幕录制",
+  "GPU screen recorder status": "GPU 屏幕录制状态", "Queued reminder status": "待处理提醒状态",
+  "Night light": "夜灯", "Night Light": "夜灯", "Blue-light filter": "蓝光过滤",
+  "Do not disturb": "勿扰模式", "Notification silencing": "静音通知",
+  "Stay awake": "保持唤醒", "Stay Awake": "保持唤醒",
+  "Idle lock and screensaver override": "暂停空闲锁屏和屏幕保护",
+  "Always Show": "始终显示", "Show inactive indicators without waiting for hover.": "始终显示未启用的指示器，无需等待鼠标悬停。",
+  "Dictate": "语音输入", "Day Light": "关闭夜灯", "Allow Notifications": "允许通知",
+  "Silence Notifications": "静音通知", "Stop recording": "停止录制",
+  "Allow Idle Lock & Screensaver": "恢复空闲锁屏和屏幕保护",
+
+  "Omarchy menu": "Omarchy 菜单", "Quickshell-powered Omarchy command menu": "基于 Quickshell 的 Omarchy 命令菜单",
+  "Launches the Omarchy menu": "打开 Omarchy 菜单", "Compositor": "桌面环境",
+  "Go": "开始", "Input": "输入", "Select": "选择", "Uninstall": "卸载",
+  "Cancel": "取消", "Nothing here yet": "这里暂时没有内容",
+  "Notifications": "通知", "Notification daemon, popups, DND, and history": "通知服务、弹窗、勿扰模式和历史记录",
+  "No recent notifications": "没有最近的通知",
+
+  "Enter Password": "请输入密码", "Authentication failed (": "认证失败（",
+  "Lock Screen": "锁屏", "Authentication is needed...": "需要进行身份认证…",
+  "Checking...": "正在验证…", "Enter password": "请输入密码", "Wrong": "密码错误",
+  "Authorize running '": "授权运行“", "Polkit Agent": "权限认证",
+
+  "Clipboard": "剪贴板", "Clipboard is empty": "剪贴板为空",
+  "Delete entire clipboard history?": "确定清空全部剪贴板记录吗？", "Delete": "删除",
+  "Image": "图片", "Screenshot": "截图", "Emojis": "表情符号",
+  "No matches for “": "没有匹配“", "Image picker": "图片选择器", "No matches": "没有匹配项",
+  "Reminders": "提醒", "Enter the number of minutes": "请输入分钟数",
+  "Invalid reminder": "提醒时间无效", "Remind in minutes": "多少分钟后提醒",
+  "Reminder message": "提醒内容",
+
+  "Speed Test": "网络测速", "DOWNLOAD": "下载", "UPLOAD": "上传",
+  "Measure again via fast.com": "通过 fast.com 重新测速", "Speed test failed": "网络测速失败",
+  "Disk speed test": "磁盘测速", "READ": "读取", "WRITE": "写入",
+  "Measure again": "重新测试", "Disk speed test failed": "磁盘测速失败",
+  "Wi-Fi QR": "无线网络二维码", "Generating QR code…": "正在生成二维码…",
+  "Scan to join this network": "扫描二维码加入此网络", "Could not generate the Wi-Fi QR code": "无法生成无线网络二维码",
+  "Could not read the Wi-Fi password": "无法读取无线网络密码", "Show password": "显示密码",
+
+  "Status": "状态", "System": "系统", "Network": "网络", "Time": "时间", "Info": "信息",
+  "Volume slider, output picker, per-app mixer": "音量、输出设备和应用混音控制",
+  "Bluetooth device list with connect/disconnect": "蓝牙设备与连接控制",
+  "Date/time label with a calendar popup": "日期时间与日历",
+  "Brightness slider and laptop display controls": "亮度与显示器控制",
+  "Wi-Fi list and connection state": "无线网络列表与连接状态",
+  "Battery, power profile, and system stats": "电池、电源模式和系统状态",
+  "Weather pill with detail popup": "天气和详细预报",
+  "Status notifier items": "系统托盘项目", "Indicates available Omarchy updates": "显示可用的 Omarchy 更新",
+  "A clipboard manager to view and paste history": "查看和粘贴历史记录的剪贴板管理器",
+  "Search, copy, and type emojis": "搜索、复制和输入表情符号",
+  "Image-grid selector overlay used for wallpapers, themes, and any other directory of images": "用于壁纸、主题和图片目录的图片选择器",
+  "Interactive reminder setup flow": "交互式提醒设置",
+  "Internet speed test with download and upload dials": "测试网络下载和上传速度",
+  "Live disk write and read speed dials. Summon with: omarchy-shell shell summon omarchy.disk-speedtest": "实时测试磁盘写入和读取速度",
+  "Share the connected Wi-Fi network as a scannable QR code": "通过二维码分享当前无线网络",
+  "Quickshell session lock with separate password and fingerprint PAM flows.": "支持密码和指纹认证的 Quickshell 锁屏",
+  "Theme-aware authentication dialog for privileged actions.": "跟随主题的系统权限认证对话框",
+  "Claude Code, Codex, and Fireworks usage, limits, and pace in a native Omarchy bar panel.": "在 Omarchy 面板中显示 Claude Code、Codex 和 Fireworks 的用量与限额",
+  "One bar icon and one panel: rate-limit meters with pace, today, the last week, and the all-time model breakdown for every subscription.": "在状态栏面板中显示各项订阅今天、最近一周及累计的模型用量",
+  "Refresh interval (seconds)": "刷新间隔（秒）", "Synced aggregation": "跨设备汇总",
+  "Sync folder": "同步文件夹", "Snapshot file name": "快照文件名", "Device id": "设备标识",
+  "When On, write this machine's local usage snapshot and merge snapshots from other machines.": "开启后保存本机用量快照，并合并其他设备的快照。",
+  "A folder synced by Syncthing, Dropbox, rsync, etc.": "由 Syncthing、Dropbox 或 rsync 等工具同步的文件夹。",
+  "Optional. Defaults to <hostname>.json. Use a different file name on each machine, such as laptop.json or desktop.json.": "可选。默认为 <hostname>.json；每台设备应使用不同文件名。",
+  "Optional stable device name used inside synced aggregate snapshots.": "可选。用于汇总快照的固定设备名称。"
+};
+
+// These labels are also used as internal indicator IDs. Translate them only in
+// manifest display fields, never with the global source-code replacement pass.
+const schemaZh = {
+  "Dictation": "语音输入",
+  "Reminder": "提醒"
+};
+
+// Descriptions shown by the dynamic Hyprland keybinding panel. Application and
+// product names stay unchanged; only the user-facing action is translated.
+const keybindingZh = {
+  "Activity": "活动监视器", "Agent": "AI 助手", "Apps menu": "应用菜单",
+  "Audio": "音频", "Background switcher": "背景切换器", "Bluetooth": "蓝牙",
+  "Brightness down": "降低亮度", "Brightness down precise": "小幅降低亮度",
+  "Brightness maximum": "最高亮度", "Brightness minimum": "最低亮度",
+  "Brightness up": "提高亮度", "Brightness up precise": "小幅提高亮度",
+  "Browser": "浏览器", "Browser (private)": "浏览器（隐私模式）",
+  "Calculator": "计算器", "Calendar": "日历", "Capture menu": "截取菜单",
+  "Clear reminders": "清除提醒", "Clipboard manager": "剪贴板管理器",
+  "Close all windows": "关闭所有窗口", "Close window": "关闭窗口",
+  "Color picker": "取色器", "Copy URL from Web App": "复制网页应用网址",
+  "Disable touchpad": "禁用触控板", "Dismiss all notifications": "关闭所有通知",
+  "Dismiss last notification": "关闭上一条通知", "Display": "显示器",
+  "Download Video from Web App": "从网页应用下载视频", "Editor": "编辑器",
+  "Eject media": "弹出媒体", "Email": "电子邮件", "Emojis": "表情符号",
+  "Enable touchpad": "启用触控板", "Expand window down": "向下扩展窗口",
+  "Expand window down a little": "小幅向下扩展窗口", "Expand window down a lot": "大幅向下扩展窗口",
+  "Expand window left": "向左扩展窗口", "Expand window left a little": "小幅向左扩展窗口",
+  "Expand window left a lot": "大幅向左扩展窗口", "Extract text (OCR) from screenshot": "从截图提取文字（OCR）",
+  "File manager": "文件管理器", "File manager (cwd)": "文件管理器（当前目录）",
+  "Focus on above window": "聚焦上方窗口", "Focus on below window": "聚焦下方窗口",
+  "Focus on left window": "聚焦左侧窗口", "Focus on next monitor": "聚焦下一个显示器",
+  "Focus on next window": "聚焦下一个窗口", "Focus on previous monitor": "聚焦上一个显示器",
+  "Focus on previous window": "聚焦上一个窗口", "Focus on right window": "聚焦右侧窗口",
+  "Former workspace": "返回先前工作区", "Full screen": "全屏",
+  "Full width": "占满宽度", "Hardware menu": "硬件菜单",
+  "Herdr keybindings": "Herdr 快捷键", "Invoke last notification": "执行上一条通知的操作",
+  "Keybindings": "快捷键", "Keyboard backlight cycle": "切换键盘背光",
+  "Keyboard brightness down": "降低键盘背光亮度", "Keyboard brightness up": "提高键盘背光亮度",
+  "Lock system": "锁定系统", "Make webcam overlay larger": "放大摄像头浮层",
+  "Make webcam overlay smaller": "缩小摄像头浮层", "Monitor scaling down": "降低显示器缩放",
+  "Monitor scaling up": "提高显示器缩放", "Move active window out of group": "将活动窗口移出分组",
+  "Move grouped window focus left": "将分组窗口焦点左移", "Move grouped window focus right": "将分组窗口焦点右移",
+  "Move window": "移动窗口", "Move window to scratchpad": "将窗口移到暂存区",
+  "Move workspace to down monitor": "将工作区移到下方显示器", "Move workspace to left monitor": "将工作区移到左侧显示器",
+  "Move workspace to right monitor": "将工作区移到右侧显示器", "Move workspace to up monitor": "将工作区移到上方显示器",
+  "Music": "音乐", "Music TUI": "终端音乐", "Mute": "静音",
+  "Mute microphone": "麦克风静音", "Network": "网络", "New email": "新建邮件",
+  "Next track": "下一曲", "Next window in group": "分组中的下一个窗口",
+  "Next workspace": "下一个工作区", "Omarchy menu": "Omarchy 菜单",
+  "Open notification history": "打开通知历史", "Passwords": "密码",
+  "Pause": "暂停", "Play": "播放", "Pop window out (float & pin)": "弹出窗口（浮动并置顶）",
+  "Power": "电源", "Power menu": "电源菜单", "Previous track": "上一曲",
+  "Previous window in group": "分组中的上一个窗口", "Previous workspace": "上一个工作区",
+  "Pseudo window": "伪平铺窗口", "Reset zoom": "重置缩放", "Resize window": "调整窗口大小",
+  "Restore window width": "恢复窗口宽度", "Reveal active window on top": "将活动窗口显示在最上层",
+  "Save window width": "保存窗口宽度", "Screenrecording": "屏幕录制", "Screenshot": "截图",
+  "Scroll active workspace backward": "向后滚动活动工作区", "Scroll active workspace forward": "向前滚动活动工作区",
+  "Set reminder": "设置提醒", "Share": "分享", "Show battery remaining": "显示电池剩余时间",
+  "Show reminders": "显示提醒", "Show time": "显示时间", "Shrink window left": "从左侧收缩窗口",
+  "Shrink window left a little": "从左侧小幅收缩窗口", "Shrink window left a lot": "从左侧大幅收缩窗口",
+  "Shrink window up": "从上方收缩窗口", "Shrink window up a little": "从上方小幅收缩窗口",
+  "Shrink window up a lot": "从上方大幅收缩窗口", "Start dictation (push-to-talk)": "开始听写（按住说话）",
+  "Stop dictation (push-to-talk)": "停止听写（按住说话）", "Swap window down": "向下交换窗口",
+  "Swap window to the left": "向左交换窗口", "Swap window to the right": "向右交换窗口",
+  "Swap window up": "向上交换窗口", "Switch audio output": "切换音频输出",
+  "Switch media source": "切换媒体来源", "System menu": "系统菜单", "Terminal": "终端",
+  "Theme menu": "主题菜单", "Tiled full screen": "平铺全屏", "Tmux keybindings": "Tmux 快捷键",
+  "Toggle dictation": "切换语音输入", "Toggle laptop display": "切换笔记本显示器",
+  "Toggle laptop display mirroring": "切换笔记本显示器镜像", "Toggle locking on idle": "切换空闲自动锁定",
+  "Toggle menu": "开关菜单", "Toggle nightlight": "切换夜灯", "Toggle scratchpad": "切换暂存区",
+  "Toggle silencing notifications": "切换通知静音", "Toggle single-window square aspect": "切换单窗口方形比例",
+  "Toggle top bar": "切换顶部状态栏", "Toggle touchpad": "切换触控板", "Toggle weather": "切换天气",
+  "Toggle window floating/tiling": "切换窗口浮动/平铺", "Toggle window gaps": "切换窗口间距",
+  "Toggle window grouping": "切换窗口分组", "Toggle window split": "切换窗口分割方向",
+  "Toggle window transparency": "切换窗口透明度", "Toggle workspace layout": "切换工作区布局",
+  "Transcode": "转码", "Universal copy": "通用复制", "Universal cut": "通用剪切",
+  "Universal paste": "通用粘贴", "Volume down": "降低音量", "Volume down precise": "小幅降低音量",
+  "Volume up": "提高音量", "Volume up precise": "小幅提高音量", "X Post": "发布 X 帖子",
+  "Zoom in": "放大"
+};
+
+// Render-time translations for notifications emitted by Omarchy's packaged
+// shell scripts. The stored notification stays untouched; only its display is
+// localized, so actions and history metadata keep their original values.
+// Menu translations are keyed by stable Omarchy menu IDs so identical English
+// words can receive context-appropriate Chinese labels.
+const menuZh = {
+  "apps": {
+    "label": "应用"
+  },
+  "learn": {
+    "label": "学习"
+  },
+  "trigger": {
+    "label": "快捷工具"
+  },
+  "style": {
+    "label": "外观"
+  },
+  "setup": {
+    "label": "设置"
+  },
+  "install": {
+    "label": "安装"
+  },
+  "remove": {
+    "label": "卸载"
+  },
+  "update": {
+    "label": "更新与维护"
+  },
+  "about": {
+    "label": "关于"
+  },
+  "system": {
+    "label": "系统"
+  },
+  "system.screensaver": {
+    "label": "屏幕保护"
+  },
+  "system.lock": {
+    "label": "锁定"
+  },
+  "system.suspend": {
+    "label": "睡眠"
+  },
+  "system.hibernate": {
+    "label": "休眠"
+  },
+  "system.logout": {
+    "label": "注销"
+  },
+  "system.reboot": {
+    "label": "重新启动"
+  },
+  "system.shutdown": {
+    "label": "关机"
+  },
+  "learn.keybindings": {
+    "label": "快捷键"
+  },
+  "learn.community": {
+    "label": "社区"
+  },
+  "trigger.emoji": {
+    "label": "表情符号"
+  },
+  "trigger.reminder": {
+    "label": "提醒"
+  },
+  "trigger.capture": {
+    "label": "截取与录制"
+  },
+  "trigger.capture.screenshot": {
+    "label": "截图"
+  },
+  "trigger.capture.screenrecord.stop": {
+    "label": "停止录屏"
+  },
+  "trigger.capture.screenrecord": {
+    "label": "屏幕录制"
+  },
+  "trigger.capture.text": {
+    "label": "识别文字"
+  },
+  "trigger.capture.qr": {
+    "label": "二维码"
+  },
+  "trigger.capture.color": {
+    "label": "取色"
+  },
+  "trigger.capture.screenrecord.no-audio": {
+    "label": "无音频"
+  },
+  "trigger.capture.screenrecord.desktop-audio": {
+    "label": "包含桌面音频"
+  },
+  "trigger.capture.screenrecord.microphone": {
+    "label": "桌面音频和麦克风"
+  },
+  "trigger.capture.screenrecord.webcam": {
+    "label": "桌面音频、麦克风和摄像头"
+  },
+  "trigger.transcode": {
+    "label": "转码"
+  },
+  "trigger.share": {
+    "label": "分享"
+  },
+  "trigger.toggle": {
+    "label": "功能开关"
+  },
+  "trigger.hardware": {
+    "label": "硬件"
+  },
+  "trigger.tests": {
+    "label": "速度测试"
+  },
+  "trigger.hardware.laptop-display": {
+    "label": "笔记本屏幕"
+  },
+  "trigger.hardware.mirror-display": {
+    "label": "镜像显示"
+  },
+  "trigger.hardware.hybrid-gpu": {
+    "label": "混合显卡"
+  },
+  "trigger.hardware.touchpad": {
+    "label": "触控板"
+  },
+  "trigger.hardware.touchpad-haptics": {
+    "label": "触控板振动反馈"
+  },
+  "trigger.hardware.touchpad-haptics.low": {
+    "label": "低"
+  },
+  "trigger.hardware.touchpad-haptics.mid": {
+    "label": "中"
+  },
+  "trigger.hardware.touchpad-haptics.high": {
+    "label": "高"
+  },
+  "trigger.hardware.touchscreen": {
+    "label": "触摸屏"
+  },
+  "trigger.reminder.set": {
+    "label": "新建提醒"
+  },
+  "trigger.reminder.show": {
+    "label": "查看全部"
+  },
+  "trigger.reminder.clear": {
+    "label": "清除全部"
+  },
+  "trigger.share.clipboard": {
+    "label": "剪贴板"
+  },
+  "trigger.share.file": {
+    "label": "文件"
+  },
+  "trigger.share.folder": {
+    "label": "文件夹"
+  },
+  "trigger.share.receive": {
+    "label": "接收"
+  },
+  "trigger.toggle.idle-lock": {
+    "label": "保持唤醒"
+  },
+  "trigger.toggle.notifications": {
+    "label": "通知"
+  },
+  "trigger.toggle.crash-capture": {
+    "label": "崩溃信息收集"
+  },
+  "trigger.toggle.screensaver": {
+    "label": "屏幕保护"
+  },
+  "trigger.toggle.nightlight": {
+    "label": "夜间模式"
+  },
+  "trigger.toggle.top-bar": {
+    "label": "菜单栏"
+  },
+  "trigger.toggle.battery-percentage": {
+    "label": "电量百分比"
+  },
+  "trigger.toggle.workspace-layout": {
+    "label": "工作区布局"
+  },
+  "trigger.toggle.window-gaps": {
+    "label": "窗口间距"
+  },
+  "trigger.toggle.one-window-ratio": {
+    "label": "单窗口比例"
+  },
+  "trigger.tests.network-speedtest": {
+    "label": "网络测速"
+  },
+  "trigger.tests.disk-speedtest": {
+    "label": "磁盘测速"
+  },
+  "style.theme": {
+    "label": "主题"
+  },
+  "style.background": {
+    "label": "壁纸"
+  },
+  "style.unlock": {
+    "label": "解锁界面"
+  },
+  "style.font": {
+    "label": "字体"
+  },
+  "style.bar": {
+    "label": "菜单栏"
+  },
+  "style.bar.position": {
+    "label": "位置"
+  },
+  "style.bar.transparency": {
+    "label": "透明度"
+  },
+  "style.screensaver": {
+    "label": "屏幕保护"
+  },
+  "style.about": {
+    "label": "关于"
+  },
+  "style.bar.position.top": {
+    "label": "顶部"
+  },
+  "style.bar.position.bottom": {
+    "label": "底部"
+  },
+  "style.bar.position.left": {
+    "label": "左侧"
+  },
+  "style.bar.position.right": {
+    "label": "右侧"
+  },
+  "style.about.text": {
+    "label": "编辑文字"
+  },
+  "style.about.image": {
+    "label": "从图片设置"
+  },
+  "style.about.default": {
+    "label": "恢复默认"
+  },
+  "style.screensaver.text": {
+    "label": "编辑文字"
+  },
+  "style.screensaver.image": {
+    "label": "从图片设置"
+  },
+  "style.screensaver.default": {
+    "label": "恢复默认"
+  },
+  "setup.monitors": {
+    "label": "显示器"
+  },
+  "setup.keybindings": {
+    "label": "快捷键"
+  },
+  "setup.input": {
+    "label": "输入设备"
+  },
+  "setup.network": {
+    "label": "网络"
+  },
+  "setup.network.dns.custom": {
+    "label": "自定义"
+  },
+  "setup.network.qr": {
+    "label": "二维码"
+  },
+  "setup.default": {
+    "label": "默认应用"
+  },
+  "setup.default.agent": {
+    "label": "AI 助手",
+    "title": "默认 AI 助手"
+  },
+  "setup.default.browser": {
+    "label": "浏览器",
+    "title": "默认浏览器"
+  },
+  "setup.default.terminal": {
+    "label": "终端",
+    "title": "默认终端"
+  },
+  "setup.default.editor": {
+    "label": "编辑器",
+    "title": "默认编辑器"
+  },
+  "setup.plugin": {
+    "label": "插件"
+  },
+  "setup.plugin.enable": {
+    "label": "启用插件"
+  },
+  "setup.plugin.disable": {
+    "label": "停用插件"
+  },
+  "setup.plugin.add": {
+    "label": "添加插件"
+  },
+  "setup.plugin.clone": {
+    "label": "克隆插件"
+  },
+  "setup.plugin.remove": {
+    "label": "移除插件"
+  },
+  "setup.security": {
+    "label": "安全"
+  },
+  "setup.config": {
+    "label": "配置"
+  },
+  "setup.security.fingerprint": {
+    "label": "指纹"
+  },
+  "setup.security.passwordless-sudo": {
+    "label": "免密码管理权限"
+  },
+  "setup.direct-boot": {
+    "label": "直接启动"
+  },
+  "setup.reset": {
+    "label": "重置电脑"
+  },
+  "install.package": {
+    "label": "软件包"
+  },
+  "install.webapp": {
+    "label": "网页应用"
+  },
+  "install.tui": {
+    "label": "终端应用"
+  },
+  "install.style": {
+    "label": "外观"
+  },
+  "install.style.theme": {
+    "label": "主题"
+  },
+  "install.style.background": {
+    "label": "壁纸"
+  },
+  "install.style.font": {
+    "label": "字体"
+  },
+  "install.service": {
+    "label": "服务"
+  },
+  "install.development": {
+    "label": "开发环境"
+  },
+  "install.editor": {
+    "label": "编辑器"
+  },
+  "install.terminal": {
+    "label": "终端"
+  },
+  "install.browser": {
+    "label": "浏览器"
+  },
+  "install.ai": {
+    "label": "人工智能"
+  },
+  "install.gaming": {
+    "label": "游戏"
+  },
+  "install.windows": {
+    "label": "Windows 虚拟机"
+  },
+  "install.preinstalls": {
+    "label": "预装软件"
+  },
+  "install.service.chromium-account": {
+    "label": "Chromium 账户"
+  },
+  "install.ai.chatgpt": {
+    "label": "ChatGPT 桌面版"
+  },
+  "install.ai.dictation": {
+    "label": "语音输入"
+  },
+  "install.ai.grok-bot": {
+    "label": "Grok 机器人"
+  },
+  "install.gaming.xbox-cloud": {
+    "label": "Xbox 云游戏"
+  },
+  "install.gaming.xbox-controllers": {
+    "label": "Xbox 控制器"
+  },
+  "install.gaming.heroic": {
+    "label": "Heroic（Epic 游戏）"
+  },
+  "install.gaming.retro-launcher": {
+    "label": "RetroArch 游戏启动器"
+  },
+  "install.development.docker-dbs": {
+    "label": "Docker 数据库"
+  },
+  "remove.package": {
+    "label": "软件包"
+  },
+  "remove.webapp": {
+    "label": "网页应用"
+  },
+  "remove.tui": {
+    "label": "终端应用"
+  },
+  "remove.development": {
+    "label": "开发环境",
+    "title": "卸载"
+  },
+  "remove.theme": {
+    "label": "主题"
+  },
+  "remove.browser": {
+    "label": "浏览器",
+    "title": "卸载"
+  },
+  "remove.dictation": {
+    "label": "语音输入"
+  },
+  "remove.gaming": {
+    "label": "游戏",
+    "title": "卸载"
+  },
+  "remove.service": {
+    "label": "服务",
+    "title": "卸载"
+  },
+  "remove.windows": {
+    "label": "Windows 虚拟机"
+  },
+  "remove.preinstalls": {
+    "label": "预装软件"
+  },
+  "remove.security": {
+    "label": "安全",
+    "title": "卸载"
+  },
+  "remove.security.fingerprint": {
+    "label": "指纹"
+  },
+  "remove.gaming.xbox-cloud": {
+    "label": "Xbox 云游戏"
+  },
+  "remove.gaming.xbox-controllers": {
+    "label": "Xbox 控制器（󰂯）"
+  },
+  "remove.gaming.heroic": {
+    "label": "Heroic（Epic 游戏）"
+  },
+  "remove.development.javascript": {
+    "title": "卸载"
+  },
+  "remove.development.php": {
+    "title": "卸载"
+  },
+  "remove.development.elixir": {
+    "title": "卸载"
+  },
+  "update.channel": {
+    "label": "更新通道"
+  },
+  "update.config": {
+    "label": "配置",
+    "title": "恢复默认配置"
+  },
+  "update.themes": {
+    "label": "附加主题"
+  },
+  "update.process": {
+    "label": "进程",
+    "title": "重新启动"
+  },
+  "update.hardware": {
+    "label": "硬件",
+    "title": "重新启动"
+  },
+  "update.firmware": {
+    "label": "固件"
+  },
+  "update.password": {
+    "label": "密码"
+  },
+  "update.timezone": {
+    "label": "时区"
+  },
+  "update.time": {
+    "label": "时间"
+  },
+  "update.channel.stable": {
+    "label": "稳定版"
+  },
+  "update.channel.rc": {
+    "label": "候选版"
+  },
+  "update.channel.dev": {
+    "label": "开发版"
+  },
+  "update.process.shell": {
+    "label": "桌面外壳"
+  },
+  "update.config.shell": {
+    "label": "桌面外壳"
+  },
+  "update.hardware.audio": {
+    "label": "音频"
+  },
+  "update.hardware.wifi": {
+    "label": "无线网络"
+  },
+  "update.hardware.bluetooth": {
+    "label": "蓝牙"
+  },
+  "update.hardware.trackpad": {
+    "label": "触控板"
+  },
+  "update.password.drive": {
+    "label": "磁盘加密"
+  },
+  "update.password.user": {
+    "label": "用户密码"
+  }
+};
+
+
+const notificationLocalizationSource = String.raw`function translate(value, appName) {
+  var original = String(value || "")
+  if (String(appName || "").toLowerCase() !== "omarchy-action") return original
+
+  var exact = {
+    "URL copied to clipboard": "网址已复制到剪贴板",
+    "Update System": "更新系统",
+    "Click to update the system.": "点击更新系统。",
+    "Setup Wi-Fi": "设置无线网络",
+    "Click to configure the wireless network.": "点击配置无线网络。",
+    "Learn Keybindings": "学习快捷键",
+    "Super + K for cheatsheet.\nSuper + Space for Omarchy Menu.": "按 Super + K 查看快捷键。\n按 Super + Space 打开 Omarchy 菜单。",
+    "No webcam devices found": "未找到摄像头设备",
+    "Screen recording error": "屏幕录制出错",
+    "Recording process had to be force-killed. Video may be corrupted.": "录制进程被强制终止，视频文件可能已损坏。",
+    "Screen recording saved": "屏幕录制已保存",
+    "Open with Super + Alt + , (or click this)": "按 Super + Alt + , 打开（或点击此通知）",
+    "Time to recharge!": "该充电了！",
+    "Copied text from selection to clipboard": "已将选区文字复制到剪贴板",
+    "Screenshot saved to clipboard and file": "截图已保存到剪贴板和文件",
+    "Edit with Super + Alt + , (or click this)": "按 Super + Alt + , 编辑（或点击此通知）",
+    "No RetroArch cores found": "未找到 RetroArch 核心",
+    "Start it with Super + Space": "按 Super + Space 启动",
+    "No external monitors found for mirror": "未找到可用于镜像的外接显示器",
+    "No laptop monitor found to mirror": "未找到可用于镜像的笔记本显示器",
+    "Extended mode restored": "已恢复扩展显示模式",
+    "Laptop display enabled": "笔记本显示器已启用",
+    "No laptop display found": "未找到笔记本显示器",
+    "Can't disable the only active display": "无法禁用唯一正在使用的显示器",
+    "Laptop display disabled": "笔记本显示器已禁用",
+    "You must restart Ghostty to see font change": "需要重启 Ghostty 才能看到字体变化",
+    "You must restart Foot to see font change": "需要重启 Foot 才能看到字体变化",
+    "No QR code found": "未找到二维码",
+    "Select a region containing a QR code": "请选择包含二维码的区域",
+    "QR code copied to clipboard": "二维码已复制到剪贴板",
+    "Screensaver only runs in Alacritty, Foot, Ghostty, or Kitty": "屏幕保护程序仅支持 Alacritty、Foot、Ghostty 或 Kitty",
+    "Editing config file": "正在编辑配置文件",
+    "No video found for download": "未找到可下载的视频",
+    "Download complete": "下载完成",
+    "Download failed": "下载失败",
+    "Enable single-window square aspect ratio": "已启用单窗口方形宽高比",
+    "Disable single-window square aspect ratio": "已禁用单窗口方形宽高比",
+    "Pending Omarchy Migrations": "有待执行的 Omarchy 迁移",
+    "Could not share": "无法分享",
+    "The file chooser did not open": "文件选择器未能打开",
+    "Upcoming reminders": "即将到来的提醒",
+    "No outstanding reminders": "没有待处理的提醒",
+    "All reminders have been cleared": "已清除全部提醒",
+    "Reminder": "提醒",
+    "No background was found for theme": "未找到该主题的背景图片",
+    "Starting Windows VM": "正在启动 Windows 虚拟机",
+    "This can take 15-30 seconds": "这可能需要 15–30 秒",
+    "Windows VM": "Windows 虚拟机",
+    "Failed to start Windows VM": "Windows 虚拟机启动失败",
+    "Voxtype Dictation Ready": "Voxtype 语音输入已就绪",
+    "Hold F9 to dictate (or toggle with Super + Ctrl + X).": "按住 F9 开始听写（或按 Super + Ctrl + X 切换）。",
+    "Web app removed": "网页应用已移除",
+    "Screensaver disabled": "屏幕保护程序已禁用",
+    "Screensaver enabled": "屏幕保护程序已启用",
+    "Crash capture disabled": "崩溃捕获已禁用",
+    "Crash capture enabled": "崩溃捕获已启用",
+    "Theme removed": "主题已移除",
+    "TUI removed": "终端应用已移除",
+    "Suspend removed from system menu": "已从系统菜单移除睡眠选项",
+    "Suspend now available in system menu": "系统菜单现在可以使用睡眠选项",
+    "Saved and copied to clipboard.": "已保存并复制到剪贴板。",
+    "Weather unavailable": "天气信息不可用",
+    "Click to diagnose with AI": "点击使用 AI 诊断",
+    "Screen did not lock before suspend": "睡眠前屏幕未能锁定"
+  }
+  if (Object.prototype.hasOwnProperty.call(exact, original)) return exact[original]
+
+  var match
+  if ((match = original.match(/^Battery is down to (\d+)%$/))) return "电池电量已降至 " + match[1] + "%"
+  if ((match = original.match(/^Process crashed: (.+)$/))) return "进程崩溃：" + match[1]
+  if ((match = original.match(/^The session was left unlocked \((.+)\)\.$/))) return "会话处于未锁定状态（" + match[1] + "）。"
+  if ((match = original.match(/^Screen recording directory does not exist: (.+)$/))) return "屏幕录制目录不存在：" + match[1]
+  if ((match = original.match(/^Created screenshot directory: (.+)$/))) return "已创建截图目录：" + match[1]
+  if ((match = original.match(/^Mirroring enabled \((.+)\)$/))) return "已启用镜像显示（" + match[1] + "）"
+  if ((match = original.match(/^(.+) is now the default browser$/))) return match[1] + " 现已设为默认浏览器"
+  if ((match = original.match(/^(.+) is now the default terminal$/))) return match[1] + " 现已设为默认终端"
+  if ((match = original.match(/^(.+) is now the default editor$/))) return match[1] + " 现已设为默认编辑器"
+  if ((match = original.match(/^Workspace layout set to (.+)$/))) {
+    var layoutNames = {
+      "scrolling": "滚动布局",
+      "dwindle": "螺旋平铺",
+      "master": "主从布局"
+    }
+    return "工作区布局已设为" + (layoutNames[match[1]] || match[1])
+  }
+  if ((match = original.match(/^Timezone is now set to (.+)$/))) return "时区现已设为 " + match[1]
+  if ((match = original.match(/^No plugin to (.+)$/))) return "没有可执行“" + match[1] + "”操作的插件"
+  if ((match = original.match(/^Reminder set for (\d+) minutes$/))) return "已设置 " + match[1] + " 分钟后的提醒"
+  if ((match = original.match(/^You'll be reminded at (.+)$/))) return "将在 " + match[1] + " 提醒"
+  if ((match = original.match(/^Your (\d+) minutes are up$/))) return match[1] + " 分钟时间已到"
+  if ((match = original.match(/^(.+) in (\d+) minutes$/))) return match[1] + "（" + match[2] + " 分钟后）"
+  if ((match = original.match(/^(.+) installed$/))) return match[1] + " 已安装"
+  if ((match = original.match(/^Sent to (.+)$/))) return "已发送到 " + match[1]
+  if ((match = original.match(/^Could not send to (.+)$/))) return "无法发送到 " + match[1]
+  if ((match = original.match(/^Transcoding video…$/))) return "正在转码视频…"
+  if ((match = original.match(/^Transcoded to (.+)$/))) return "已转码为 " + match[1]
+
+  var localized = original
+    .replace(/\s*·\s*Temp\s+/g, "  ·  温度 ")
+    .replace(/\s*·\s*Wind\s+/g, "  ·  风速 ")
+    .replace(/\bMonday\b/g, "星期一").replace(/\bTuesday\b/g, "星期二")
+    .replace(/\bWednesday\b/g, "星期三").replace(/\bThursday\b/g, "星期四")
+    .replace(/\bFriday\b/g, "星期五").replace(/\bSaturday\b/g, "星期六")
+    .replace(/\bSunday\b/g, "星期日")
+    .replace(/\bJanuary\b/g, "1月").replace(/\bFebruary\b/g, "2月")
+    .replace(/\bMarch\b/g, "3月").replace(/\bApril\b/g, "4月")
+    .replace(/\bMay\b/g, "5月").replace(/\bJune\b/g, "6月")
+    .replace(/\bJuly\b/g, "7月").replace(/\bAugust\b/g, "8月")
+    .replace(/\bSeptember\b/g, "9月").replace(/\bOctober\b/g, "10月")
+    .replace(/\bNovember\b/g, "11月").replace(/\bDecember\b/g, "12月")
+    .replace(/\bWeek (\d+)\b/g, "第 $1 周")
+  return localized
+}
+
+if (typeof module !== "undefined") module.exports = { translate: translate }
+`;
+
+function stripJsonc(raw) {
+  return String(raw || "").replace(/^\s*\/\/[^\n]*(\n|$)/gm, "").replace(/,(\s*[}\]])/g, "$1");
+}
+
+function translated(value) { return zh[value] || schemaZh[value] || value; }
+
+function awkString(value) {
+  return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function keybindingLocalizerSource() {
+  const assignments = Object.entries(keybindingZh)
+    .map(([from, to]) => `    zh["${awkString(from)}"] = "${awkString(to)}"`)
+    .join("\n");
+
+  return `localize_binding_records() {
+  awk -F '\\t' '
+  BEGIN {
+    OFS = "\\t"
+${assignments}
+  }
+  function translated_action(action, number) {
+    if (action in zh) return zh[action]
+
+    number = action
+    if (number ~ /^Bar panel [0-9]+$/) {
+      sub(/^Bar panel /, "", number); return "状态栏面板 " number
+    }
+    if (number ~ /^Move window silently to workspace [0-9]+$/) {
+      sub(/^Move window silently to workspace /, "", number); return "将窗口静默移到工作区 " number
+    }
+    if (number ~ /^Move window to workspace [0-9]+$/) {
+      sub(/^Move window to workspace /, "", number); return "将窗口移到工作区 " number
+    }
+    if (number ~ /^Switch to workspace [0-9]+$/) {
+      sub(/^Switch to workspace /, "", number); return "切换到工作区 " number
+    }
+    if (number ~ /^Switch to group window [0-9]+$/) {
+      sub(/^Switch to group window /, "", number); return "切换到分组窗口 " number
+    }
+    if (action == "Move window to group on bottom") return "将窗口移到下方分组"
+    if (action == "Move window to group on left") return "将窗口移到左侧分组"
+    if (action == "Move window to group on right") return "将窗口移到右侧分组"
+    if (action == "Move window to group on top") return "将窗口移到上方分组"
+    return action
+  }
+  {
+    marker = " → "
+    position = index($1, marker)
+    if (position > 0) {
+      combo = substr($1, 1, position + length(marker) - 1)
+      action = substr($1, position + length(marker))
+      $1 = combo translated_action(action)
+    }
+    print
+  }'
+}
+
+`;
+}
+
+function replaceRequired(content, from, to, label) {
+  if (!content.includes(from)) throw new Error(`快捷键脚本结构已变化：${label}`);
+  return content.replace(from, to);
+}
+
+function syncKeybindings() {
+  if (!fs.existsSync(keybindingsSource)) return;
+
+  let content = fs.readFileSync(keybindingsSource, "utf8");
+  content = replaceRequired(
+    content,
+    "output_keybindings() {\n  output_binding_records | cut -f1\n}",
+    keybindingLocalizerSource() + "output_keybindings() {\n  output_binding_records | localize_binding_records | cut -f1\n}",
+    "输出函数"
+  );
+  content = replaceRequired(
+    content,
+    "records=$(output_binding_records)\n  selection=$(cut -f1 <<<\"$records\" |",
+    "records=$(output_binding_records | localize_binding_records)\n  selection=$(cut -f1 <<<\"$records\" |",
+    "交互列表"
+  );
+  content = replaceRequired(
+    content,
+    "omarchy-menu-select 'Keybindings' -- --width 800 --height 500",
+    "omarchy-menu-select '快捷键' -- --width 800 --height 500",
+    "面板标题"
+  );
+
+  fs.mkdirSync(path.dirname(keybindingsZh), { recursive: true });
+  const temporary = `${keybindingsZh}.new-${process.pid}`;
+  fs.writeFileSync(temporary, content, { mode: 0o755 });
+  fs.chmodSync(temporary, 0o755);
+  fs.renameSync(temporary, keybindingsZh);
+}
+
+function translateText(content) {
+  let result = content;
+  for (const [from, to] of Object.entries(zh)) {
+    const source = JSON.stringify(from);
+    const target = JSON.stringify(to);
+    result = result.split(source).join(target);
+  }
+  return result;
+}
+
+function walkFiles(dir, callback) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walkFiles(full, callback);
+    else callback(full);
+  }
+}
+
+function copyEntry(sourceDir, source, stage, target = source) {
+  const src = path.join(sourceDir, source);
+  const dst = path.join(stage, target);
+  fs.mkdirSync(path.dirname(dst), { recursive: true });
+  fs.cpSync(src, dst, { recursive: true, dereference: true });
+}
+
+function rebuildPlugin(catalogEntry) {
+  const sourceId = catalogEntry.id;
+  const suffix = sourceId.slice("omarchy.".length);
+  const targetDir = path.join(pluginRoot, `${user}.${suffix}`);
+  if (!targetDir.startsWith(pluginRoot + path.sep)) throw new Error(`不安全的插件路径：${targetDir}`);
+
+  if (fs.existsSync(targetDir)) {
+    let installedManifest = {};
+    try {
+      installedManifest = JSON.parse(fs.readFileSync(path.join(targetDir, "manifest.json"), "utf8"));
+    } catch (_) {
+      throw new Error(`现有插件缺少有效清单，拒绝覆盖：${targetDir}`);
+    }
+    const managed = installedManifest.omarchy?.zhCnManaged === true;
+    const matchingClone = installedManifest.omarchy?.clonedFrom === sourceId;
+    if (!managed && !(adoptExisting && matchingClone)) {
+      throw new Error(`现有插件不是 omarchy-zh-cn 管理的克隆，拒绝覆盖：${targetDir}`);
+    }
+  }
+
+  const stage = fs.mkdtempSync(path.join(pluginRoot, ".zh-sync."));
+  const manifestPath = catalogEntry.manifestPath;
+  const sourceDir = catalogEntry.sourceDir;
+  const sourceManifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+
+  try {
+    if (path.basename(manifestPath) === "manifest.json") {
+      fs.cpSync(sourceDir, stage, { recursive: true, dereference: true });
+    } else {
+      fs.copyFileSync(manifestPath, path.join(stage, "manifest.json"));
+      const copies = [
+        ...Object.values(sourceManifest.entryPoints || {}).map(source => ({ source, target: source })),
+        ...((sourceManifest.omarchy || {}).clonePaths || [])
+      ];
+      for (const item of copies) copyEntry(sourceDir, item.source, stage, item.target);
+
+      // Match `omarchy plugin clone`: when a dependency is relocated, update
+      // relative references in the copied text files to point at its new path.
+      for (const item of copies) {
+        if (item.source === item.target) continue;
+        walkFiles(stage, file => {
+          if (!/\.(qml|js|json|jsonc|sh|md|txt)$/.test(file)) return;
+          const before = fs.readFileSync(file, "utf8");
+          const after = before.split(item.source).join(item.target);
+          if (after !== before) fs.writeFileSync(file, after);
+        });
+      }
+    }
+
+    const manifestFile = path.join(stage, "manifest.json");
+    const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+    manifest.id = `${user}.${suffix}`;
+    manifest.name = translated(sourceManifest.name || sourceId);
+    manifest.description = translated(manifest.description || "");
+    if (manifest.barWidget) {
+      manifest.barWidget.displayName = translated(sourceManifest.barWidget?.displayName || sourceManifest.name || sourceId);
+      manifest.barWidget.description = translated(manifest.barWidget.description || "");
+      manifest.barWidget.category = translated(manifest.barWidget.category || "");
+      for (const field of manifest.barWidget.schema || []) {
+        for (const key of ["label", "description", "noSelectionText", "placeholderText", "emptyText"]) {
+          if (typeof field[key] === "string") field[key] = translated(field[key]);
+        }
+        for (const option of field.options || []) {
+          if (typeof option.label === "string") option.label = translated(option.label);
+          if (typeof option.description === "string") option.description = translated(option.description);
+        }
+      }
+    }
+    manifest.omarchy = { ...(manifest.omarchy || {}), clonedFrom: sourceId, zhCnManaged: true };
+    delete manifest.omarchy.clonePaths;
+    fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + "\n");
+
+    walkFiles(stage, file => {
+      if (!/\.(qml|js|json|jsonc)$/.test(file)) return;
+      const before = fs.readFileSync(file, "utf8");
+      let after = translateText(before);
+      if (sourceId === "omarchy.indicators" && path.basename(file) === "Reminder.qml") {
+        after = after.replace(
+          'tooltip = String(data.tooltip || "")',
+          'tooltip = reminderCount === 0 ? "设置提醒" : `${reminderCount} 个提醒`'
+        );
+      }
+      if (sourceId === "omarchy.indicators" && path.basename(file) === "Dictation.qml") {
+        after = after.replace(
+          "activeTooltipText: state",
+          'activeTooltipText: state === "recording" ? "正在听写" : state === "transcribing" ? "正在转写" : state'
+        );
+      }
+      if (sourceId === "omarchy.clock" && path.basename(file) === "BarWidget.qml") {
+        after = after.replace(
+          "return Qt.formatDateTime(date, activeFormat.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())))",
+          'return Qt.locale("zh_CN").toString(date, activeFormat.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())))'
+        );
+      }
+      if (sourceId === "omarchy.clock" && path.basename(file) === "Panel.qml") {
+        after = after
+          .split("Qt.locale().").join('Qt.locale("zh_CN").')
+          .replace(
+            'Qt.formatDate(root.today, "MMMM d")',
+            'Qt.locale("zh_CN").toString(root.today, "M月d日")'
+          )
+          .replace(
+            'Qt.formatDate(root.viewDate, "MMMM yyyy").toUpperCase()',
+            'Qt.locale("zh_CN").toString(root.viewDate, "yyyy年M月")'
+          );
+      }
+      if (sourceId === "omarchy.weather" && path.basename(file) === "Panel.qml") {
+        after = after.replace(
+          'return Model.dayName(dateString, function(date) { return Qt.formatDate(date, "dddd") })',
+          'return Model.dayName(dateString, function(date) { return Qt.locale("zh_CN").toString(date, "dddd") })'
+        );
+      }
+      if (sourceId === "omarchy.menu" && path.basename(file) === "Menu.qml") {
+        after = after
+          .replace(
+            'message: "Do you want to uninstall " + ((root.deleteTarget && root.deleteTarget.label) || "") + "?"',
+            'message: "确定要卸载“" + ((root.deleteTarget && root.deleteTarget.label) || "") + "”吗？"'
+          )
+          .replace(
+            'confirmText: "卸载"',
+            'confirmText: "卸载"\n          cancelText: "取消"'
+          );
+      }
+      if (sourceId === "omarchy.notifications" && path.basename(file) === "NotificationCard.qml") {
+        after = after
+          .replace(
+            'import "../NotificationLogic.js" as NotificationLogic',
+            'import "../NotificationLogic.js" as NotificationLogic\nimport "NotificationLocalization.js" as NotificationLocalization'
+          )
+          .replace(
+            'readonly property bool hovered: hoverTracker.hovered',
+            'readonly property bool hovered: hoverTracker.hovered\n  readonly property string localizedSummary: NotificationLocalization.translate(summary, app)\n  readonly property string localizedBody: NotificationLocalization.translate(body, app)'
+          )
+          .replace(
+            'readonly property bool summaryStartsWithGlyph: NotificationLogic.summaryStartsWithGlyph(summary)',
+            'readonly property bool summaryStartsWithGlyph: NotificationLogic.summaryStartsWithGlyph(localizedSummary)'
+          )
+          .replace(
+            'readonly property string sanitizedBody: sanitizeBody(body)',
+            'readonly property string sanitizedBody: sanitizeBody(localizedBody)'
+          )
+          .replace('visible: root.summary.length > 0', 'visible: root.localizedSummary.length > 0')
+          .replace('text: root.summary', 'text: root.localizedSummary');
+      }
+      if (after !== before) fs.writeFileSync(file, after);
+    });
+
+    if (sourceId === "omarchy.notifications") {
+      fs.writeFileSync(
+        path.join(stage, "components", "NotificationLocalization.js"),
+        notificationLocalizationSource
+      );
+    }
+
+    const backup = `${targetDir}.zh-old-${process.pid}`;
+    if (fs.existsSync(backup)) fs.rmSync(backup, { recursive: true, force: true });
+    if (fs.existsSync(targetDir)) fs.renameSync(targetDir, backup);
+    try {
+      fs.renameSync(stage, targetDir);
+      fs.rmSync(backup, { recursive: true, force: true });
+    } catch (error) {
+      if (!fs.existsSync(targetDir) && fs.existsSync(backup)) fs.renameSync(backup, targetDir);
+      throw error;
+    }
+  } finally {
+    if (fs.existsSync(stage)) fs.rmSync(stage, { recursive: true, force: true });
+  }
+}
+
+function syncMenu() {
+  if (!fs.existsSync(menuDefault)) return;
+  const defaults = JSON.parse(stripJsonc(fs.readFileSync(menuDefault, "utf8")));
+  let existing = {};
+  if (fs.existsSync(menuUser)) {
+    try { existing = JSON.parse(stripJsonc(fs.readFileSync(menuUser, "utf8"))); } catch (_) {}
+  }
+  for (const [id, item] of Object.entries(defaults)) {
+    const prior = existing[id] || {};
+    const localized = menuZh[id] || {};
+    const defaultLabel = item.label;
+    const defaultTitle = item.title;
+    if (prior.label && prior.label !== defaultLabel) item.label = prior.label;
+    else if (defaultLabel) item.label = localized.label || translated(defaultLabel);
+    if (prior.title && prior.title !== defaultTitle) item.title = prior.title;
+    else if (defaultTitle) item.title = localized.title || translated(defaultTitle);
+  }
+  for (const [id, item] of Object.entries(existing)) {
+    if (!(id in defaults)) defaults[id] = item;
+  }
+  if (defaults["learn.keybindings"]) defaults["learn.keybindings"].action = keybindingsZh;
+  const header = "// Omarchy 4 简体中文菜单：动作来自当前系统版本，文字由本地汉化保留。\n";
+  fs.mkdirSync(path.dirname(menuUser), { recursive: true });
+  fs.writeFileSync(menuUser, header + JSON.stringify(defaults, null, 2) + "\n");
+}
+
+function syncShellSettings() {
+  const shellPath = path.join(home, ".config/omarchy/shell.json");
+  if (!fs.existsSync(shellPath)) return;
+
+  const shell = JSON.parse(fs.readFileSync(shellPath, "utf8"));
+  for (const section of ["left", "center", "right"]) {
+    for (const widget of shell.bar?.layout?.[section] || []) {
+      if (widget.id === `${user}.weather` || widget.id === "omarchy.weather") widget.unit = "metric";
+    }
+  }
+
+  const temporary = `${shellPath}.zh-new-${process.pid}`;
+  fs.writeFileSync(temporary, JSON.stringify(shell, null, 2) + "\n");
+  fs.renameSync(temporary, shellPath);
+}
+
+fs.mkdirSync(pluginRoot, { recursive: true });
+fs.mkdirSync(stateDir, { recursive: true });
+const catalog = JSON.parse(execFileSync("omarchy-plugin-catalog", { encoding: "utf8" }));
+const byId = new Map(catalog.filter(item => item.firstParty).map(item => [item.id, item]));
+for (const id of pluginIds) {
+  const entry = byId.get(id);
+  if (!entry) throw new Error(`找不到系统插件：${id}`);
+  rebuildPlugin(entry);
+}
+syncMenu();
+syncKeybindings();
+syncShellSettings();
+fs.writeFileSync(path.join(stateDir, "last-sync"), new Date().toISOString() + "\n");
+
+// Quickshell can retain imported JavaScript modules across a plugin rescan.
+// Restart the shell so notification display translations are always current.
+if (!noRestart) {
+  try { execFileSync("omarchy", ["restart", "shell"], { stdio: quiet ? "ignore" : "inherit" }); } catch (_) {
+    try { execFileSync("omarchy-shell", ["shell", "rescanPlugins"], { stdio: quiet ? "ignore" : "inherit" }); } catch (_) {}
+  }
+}
+if (!quiet) console.log(`已同步 ${pluginIds.length} 个中文插件、Omarchy 菜单和快捷键面板。`);
