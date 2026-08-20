@@ -2,6 +2,24 @@
 
 面向 Omarchy 4 的非官方简体中文本地化项目。它从本机当前安装的 Omarchy 源文件生成用户级插件克隆，不修改 `/usr/share/omarchy`，也不在仓库中重新分发 Omarchy 的插件源码。
 
+## 效果预览
+
+以下截图来自实际安装本项目的 Omarchy 4 桌面。具体壁纸、主题和天气数据会因用户环境而异。
+
+### 中文主菜单
+
+![Omarchy 中文主菜单](docs/images/menu.webp)
+
+### 中文快捷键面板
+
+![Omarchy 中文快捷键面板](docs/images/shortcuts.webp)
+
+### 天气与日期
+
+| 摄氏度、`km/h` 与中文天气字段 | 中文日期、月份和星期 |
+| --- | --- |
+| ![Omarchy 中文天气面板](docs/images/weather.webp) | ![Omarchy 中文日历面板](docs/images/calendar.webp) |
+
 ## 已汉化内容
 
 - Omarchy 主菜单及 300 多个菜单项目
