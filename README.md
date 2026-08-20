@@ -59,6 +59,26 @@
 
 ## 安装
 
+### 使用 AI 助手安装
+
+如果你的 AI 助手能够在本机读取文件并执行终端命令，可以把下面的提示词完整发送给它：
+
+```text
+请帮我在当前这台 Omarchy 4 系统上安装这个简体中文本地化项目：
+https://github.com/QueedWen/omarchy-zh-cn
+
+要求：
+1. 先阅读仓库的 README.md 和 install.sh，并检查当前系统、Omarchy 版本及依赖是否兼容。
+2. 将仓库克隆到合适的用户目录；如果目标目录已经存在，不要覆盖，先检查现状。
+3. 先运行 ./install.sh --dry-run。只有 dry-run 成功后，才运行 ./install.sh。
+4. 不要修改 /usr/share/omarchy，也不要覆盖现有用户插件或个人配置。
+5. 如果发现同名插件克隆或其他冲突，立即停止并告诉我具体情况；未经我明确确认，不要使用 --adopt-existing。
+6. 任何需要密码、提权或覆盖文件的操作，都要先征得我的明确确认。
+7. 安装完成后运行项目测试，检查同步结果和 Hyprland 配置错误，并告诉我修改了哪些位置、测试结果以及如何卸载。
+```
+
+### 手动安装
+
 ```bash
 git clone https://github.com/QueedWen/omarchy-zh-cn.git
 cd omarchy-zh-cn
