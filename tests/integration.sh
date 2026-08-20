@@ -57,6 +57,8 @@ NODE
 rg -Fq '"scrolling": "滚动布局"' \
   "$plugin_root/testuser.notifications/components/NotificationLocalization.js"
 rg -Fq 'Qt.locale("zh_CN")' "$plugin_root/testuser.weather/Panel.qml"
+rg -Fq '"power-saver": "节能", "balanced": "平衡", "performance": "性能"' \
+  "$plugin_root/testuser.power/Panel.qml"
 test -x "$sandbox_home/.local/bin/omarchy-menu-keybindings-zh"
 bash -n "$sandbox_home/.local/bin/omarchy-menu-keybindings-zh"
 

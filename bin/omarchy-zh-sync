@@ -1172,6 +1172,12 @@ function rebuildPlugin(catalogEntry) {
           'return Model.dayName(dateString, function(date) { return Qt.locale("zh_CN").toString(date, "dddd") })'
         );
       }
+      if (sourceId === "omarchy.power" && path.basename(file) === "Panel.qml") {
+        const profileLabelSource = 'text: String(modelData).charAt(0).toUpperCase() + String(modelData).slice(1)';
+        const profileLabelTarget = 'text: ({ "power-saver": "节能", "balanced": "平衡", "performance": "性能" })[String(modelData)] || String(modelData)';
+        if (!after.includes(profileLabelSource)) throw new Error("电源插件结构已变化：模式标签");
+        after = after.replace(profileLabelSource, profileLabelTarget);
+      }
       if (sourceId === "omarchy.menu" && path.basename(file) === "Menu.qml") {
         after = after
           .replace(

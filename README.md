@@ -20,6 +20,20 @@
 | --- | --- |
 | ![Omarchy 中文天气面板](docs/images/weather.webp) | ![Omarchy 中文日历面板](docs/images/calendar.webp) |
 
+### 常用系统面板
+
+| 显示器与缩放 | 音频输入输出 |
+| --- | --- |
+| ![Omarchy 中文显示器面板](docs/images/display.webp) | ![Omarchy 中文音频面板](docs/images/audio.webp) |
+
+| 网络与 DNS | 蓝牙设备 |
+| --- | --- |
+| ![Omarchy 中文网络面板](docs/images/network.webp) | ![Omarchy 中文蓝牙面板](docs/images/bluetooth.webp) |
+
+### 电源与性能模式
+
+![Omarchy 中文电源面板](docs/images/power.webp)
+
 ## 已汉化内容
 
 - Omarchy 主菜单及 300 多个菜单项目
