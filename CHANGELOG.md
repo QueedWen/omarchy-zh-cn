@@ -2,6 +2,7 @@
 
 ## 未发布
 
+- 修正克隆版菜单的应用列表为空：clone 取不到 shell 的 appLibrary 时，改用本地 AppLibrary 后备。
 - Agents 状态栏新增 Grok Build 与 Kimi Code 的订阅用量和限额展示。
 - 为 Grok、Kimi 增加随 Omarchy 主题切换的浅色与深色图标。
 - 兼容新版 Codex CLI 的审批策略，并延长 app-server 初始化等待时间。

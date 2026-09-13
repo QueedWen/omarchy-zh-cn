@@ -1457,6 +1457,20 @@ function rebuildPlugin(catalogEntry) {
             'confirmText: "卸载"',
             'confirmText: "卸载"\n          cancelText: "取消"'
           );
+        // Third-party clones do not receive the shell-owned appLibrary, which
+        // leaves the Apps submenu empty. Fall back to a local AppLibrary so
+        // the clone can list and launch applications like the first-party
+        // menu does.
+        const appLibrarySource = '  readonly property var appLibrary: root.shell ? root.shell.appLibrary : null';
+        const appLibraryFallback = `  readonly property var appLibrary: root.shell && root.shell.appLibrary ? root.shell.appLibrary : localAppLibrary.item
+  Loader { id: localAppLibrary; active: !(root.shell && root.shell.appLibrary); sourceComponent: AppLibrary {} }`;
+        if (!after.includes(appLibrarySource)) throw new Error("菜单插件结构已变化：应用库");
+        after = after.replace(appLibrarySource, appLibraryFallback);
+        const uiImport = "import qs.Ui";
+        if (!after.includes("import qs.services")) {
+          if (!after.includes(uiImport)) throw new Error("菜单插件结构已变化：qs.Ui 导入");
+          after = after.replace(uiImport, `${uiImport}\nimport qs.services`);
+        }
       }
       if (sourceId === "omarchy.clipboard" && path.basename(file) === "Clipboard.qml") {
         const confirmSource = 'confirmText: "删除"';
