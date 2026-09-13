@@ -63,6 +63,8 @@ NODE
 
 rg -Fq '"scrolling": "滚动布局"' \
   "$plugin_root/testuser.notifications/components/NotificationLocalization.js"
+rg -Fq 'import qs.services' "$plugin_root/testuser.menu/Menu.qml"
+rg -Fq 'localAppLibrary' "$plugin_root/testuser.menu/Menu.qml"
 rg -Fq 'Qt.locale("zh_CN")' "$plugin_root/testuser.weather/Panel.qml"
 rg -Fq '"power-saver": "节能", "balanced": "平衡", "performance": "性能"' \
   "$plugin_root/testuser.power/Panel.qml"
