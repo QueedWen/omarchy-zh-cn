@@ -2109,6 +2109,23 @@ ${elideSource}`)
   function openDmenu(payload) {`
           )
           .replace(promptLine, match => `root.localizedPrompt(${match})`);
+        // Omarchy 4.0.3 起 shell 用 scoped 门面限制第三方插件，但 appLibrary 代理
+        // 是在 createObject 属性里内联创建的，QML 重入后该属性留空，第三方菜单
+        // 永远拿不到应用库（最小第三方菜单插件实测同样为空）。克隆自建一份
+        // AppLibrary 兜底：注入可用时优先注入的，两份实现行为一致。
+        const appLibrarySource = "readonly property var appLibrary: root.shell ? root.shell.appLibrary : null";
+        const servicesImport = "import qs.Ui";
+        if (!after.includes(appLibrarySource) || after.split(servicesImport).length !== 2) {
+          throw new Error("菜单插件结构已变化：应用库注入");
+        }
+        after = after
+          .replace(servicesImport, "import qs.Ui\nimport qs.services")
+          .replace(
+            appLibrarySource,
+            "AppLibrary { id: zhAppLibraryFallback }\n" +
+              "  // shell 未给第三方菜单注入 appLibrary 时，退回到克隆自建的应用库。\n" +
+              "  readonly property var appLibrary: (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : zhAppLibraryFallback"
+          );
       }
       if (sourceId === "omarchy.clipboard" && path.basename(file) === "Clipboard.qml") {
         const confirmSource = 'confirmText: "删除"';

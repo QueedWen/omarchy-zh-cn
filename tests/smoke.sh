@@ -52,6 +52,7 @@ for expected in \
   'function localizedMessage' \
   'function localizedPrompt' \
   'function localizedStatus' \
+  '菜单插件结构已变化：应用库注入' \
   'function syncPluginMenu' \
   'setup.plugin.enable' \
   '^Battery (\d+)%  ·  (.+) left  ·  (.*)$' \

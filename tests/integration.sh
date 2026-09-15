@@ -43,6 +43,12 @@ for plugin in lock polkit; do
   fi
 done
 
+# shell 对第三方菜单不注入 appLibrary，菜单克隆必须带自建应用库兜底。
+rg -Fq 'zhAppLibraryFallback' "$plugin_root/testuser.menu/Menu.qml" || {
+  echo "菜单克隆缺少应用库兜底。" >&2
+  exit 1
+}
+
 menu_file="$sandbox_home/.config/omarchy/extensions/omarchy-menu.jsonc"
 node - "$menu_file" "$sandbox_home" <<'NODE'
 const fs = require("fs")
