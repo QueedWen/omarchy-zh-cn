@@ -209,6 +209,121 @@ rg -Fq -- '--affirmative "是" --negative "否" --no-show-help' \
 ! rg -Fq 'Omarchy update in progress' \
   "$sandbox_home/.local/share/omarchy-zh-cn/bin/omarchy-update-stay-awake"
 
+# 迁移脚本的运行时替换：执行前生成临时副本，只换整条英文消息。
+migrate_runner="$sandbox_home/.local/share/omarchy-zh-cn/bin/omarchy-migrate-zh-run"
+test -x "$migrate_runner"
+node --check "$migrate_runner"
+rg -Fq 'omarchy-migrate-zh-run "$file" 3<&-' \
+  "$sandbox_home/.local/share/omarchy-zh-cn/bin/omarchy-migrate"
+
+# 迁移通知的点击动作必须落到中文迁移脚本，否则终端输出仍然是英文。
+node - "$plugin_root/testuser.notifications/Service.qml" "$sandbox_home" <<'NODE'
+const fs = require("fs")
+const [file, home] = process.argv.slice(2)
+const source = fs.readFileSync(file, "utf8")
+const match = source.match(/function localizedArgv\(argv\) \{[\s\S]*?\n  \}/)
+if (!match) throw new Error("通知插件缺少迁移动作本地化")
+const localizedArgv = new Function(`return ${match[0]}`)()
+const launcher = "omarchy-launch-floating-terminal-with-presentation"
+const expected = home + "/.local/share/omarchy-zh-cn/bin/omarchy-migrate"
+const migrate = localizedArgv([launcher, "omarchy-migrate"])
+if (JSON.stringify(migrate) !== JSON.stringify([launcher, expected])) {
+  throw new Error(`迁移通知未指向中文迁移脚本：${JSON.stringify(migrate)}`)
+}
+for (const argv of [
+  [launcher, "omarchy-update"],
+  [launcher, "omarchy-migrate", "--pending"],
+  ["omarchy-migrate"],
+  ["omarchy-notification-dismiss", "Omarchy Migrations"]
+]) {
+  if (JSON.stringify(localizedArgv(argv)) !== JSON.stringify(argv)) {
+    throw new Error(`其它通知动作被改动：${JSON.stringify(argv)}`)
+  }
+}
+if (localizedArgv(null) !== null || JSON.stringify(localizedArgv([])) !== "[]") {
+  throw new Error("空通知动作处理不正确")
+}
+NODE
+
+printf '%s\n' \
+  '#!/bin/bash' \
+  'set -euo pipefail' \
+  'zram_conf=/etc/systemd/zram-generator.conf.d/99-local.conf' \
+  'echo "Install MPRIS support for mpv"' \
+  'echo "Keeping $zram_conf; it has local edits."' \
+  'printf "%s\n" "-- Load user modules from ~/.config and Omarchy defaults from $OMARCHY_PATH." >"$MIGRATE_FIXTURE_OUT"' \
+  'exit 3' >"$sandbox_home/migrate-fixture.sh"
+
+set +e
+MIGRATE_FIXTURE_OUT="$sandbox_home/migrate-fixture-out.txt" \
+  "$migrate_runner" "$sandbox_home/migrate-fixture.sh" >"$sandbox_home/migrate-fixture.log"
+fixture_status=$?
+set -e
+[[ $fixture_status -eq 3 ]] || {
+  echo "迁移退出码未透传：$fixture_status" >&2
+  exit 1
+}
+rg -Fq '为 mpv 安装 MPRIS 支持' "$sandbox_home/migrate-fixture.log"
+rg -Fq '保留 /etc/systemd/zram-generator.conf.d/99-local.conf：它有本地修改。' \
+  "$sandbox_home/migrate-fixture.log"
+rg -Fxq -- '-- Load user modules from ~/.config and Omarchy defaults from /usr/share/omarchy.' \
+  "$sandbox_home/migrate-fixture-out.txt"
+
+if [[ -d /usr/share/omarchy/migrations ]]; then
+  # 用假的 bash 拦住真正执行，只检查替换后的脚本。
+  mkdir -p "$sandbox_home/migrate-stub"
+  printf '%s\n' '#!/bin/bash' \
+    'if [[ ${1:-} == -n ]]; then exit 0; fi' \
+    'for arg in "$@"; do [[ -f $arg ]] || continue; cp "$arg" "${MIGRATE_ZH_CAPTURE:?}"; done' \
+    'exit 0' >"$sandbox_home/migrate-stub/bash"
+  chmod +x "$sandbox_home/migrate-stub/bash"
+
+  node - "$migrate_runner" "$sandbox_home/migrate-stub" "$sandbox_home/migrate-capture.sh" <<'NODE'
+const fs = require("fs")
+const path = require("path")
+const { execFileSync } = require("child_process")
+const [runner, stubDir, capture] = process.argv.slice(2)
+const dir = "/usr/share/omarchy/migrations"
+
+// 引号内允许变化，引号外必须逐字一致，避免汉化动到脚本逻辑。
+function skeleton(line) {
+  let out = ""
+  let quoted = false
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    if (quoted && char === "\\") { i++; continue }
+    if (char === '"') { quoted = !quoted; continue }
+    if (!quoted) out += char
+  }
+  return out
+}
+
+const files = fs.readdirSync(dir).filter(name => name.endsWith(".sh")).sort()
+if (files.length === 0) throw new Error("没有找到任何迁移脚本")
+
+let changed = 0
+for (const name of files) {
+  const source = path.join(dir, name)
+  execFileSync(runner, [source], {
+    env: { ...process.env, PATH: stubDir + ":" + process.env.PATH, MIGRATE_ZH_CAPTURE: capture },
+    stdio: "ignore"
+  })
+  const before = fs.readFileSync(source, "utf8").split("\n")
+  const after = fs.readFileSync(capture, "utf8").split("\n")
+  if (before.length !== after.length) throw new Error(`迁移替换改变了行数：${name}`)
+  for (let i = 0; i < before.length; i++) {
+    if (before[i] === after[i]) continue
+    if (skeleton(before[i]) !== skeleton(after[i])) {
+      throw new Error(`迁移替换改动了引号外的内容：${name}:${i + 1}`)
+    }
+    changed++
+  }
+}
+if (changed === 0) throw new Error("迁移脚本没有任何文案被替换")
+console.log(`迁移运行时替换检查通过（${files.length} 个脚本，${changed} 处文案）。`)
+NODE
+fi
+
 rg -Fq '同步已暂停' "$plugin_root/testuser.dropbox/Panel.qml"
 rg -Fq 'label: "已用空间"' "$plugin_root/testuser.dropbox/Panel.qml"
 rg -Fq 'text: "最近文件"' "$plugin_root/testuser.dropbox/Panel.qml"
@@ -226,6 +341,35 @@ rg -Fq '"Select resolution": "选择分辨率"' "$plugin_root/testuser.menu/Menu
 rg -Fq 'function localizedStatus' "$plugin_root/testuser.dropbox/Service.qml"
 rg -Fq 'statusText = root.localizedStatus(String(parsed.statusText || (installed ? "Stopped" : "未安装")))' \
   "$plugin_root/testuser.dropbox/Service.qml"
+rg -Fq '"Unavailable": "不可用"' "$plugin_root/testuser.dropbox/Service.qml"
+
+node - "$plugin_root/testuser.notifications/components/NotificationLocalization.js" <<'NODE'
+const fs = require("fs")
+const mod = { exports: {} }
+new Function("module", "exports", fs.readFileSync(process.argv[2], "utf8"))(mod, mod.exports)
+const translate = mod.exports.translate
+for (const [input, expected] of [
+  ["Editing Cloned Plugin", "正在编辑克隆插件"],
+  ["Original plugin has been replace by clone.", "原插件已被克隆版本取代。"],
+  ["Restart Foot to apply the new terminal font size", "重启 Foot 以应用新的终端字体大小"],
+  ["Setup Fingerprint Reader", "设置指纹识别"],
+  ["Enable sudo and unlocking with your fingerprint.", "使用指纹解锁并授权 sudo。"],
+  ["Set your default agent", "设置默认 AI 助手"],
+  ["Let your favorite agent help with Omarchy.", "让你常用的 AI 助手协助使用 Omarchy。"],
+  ["Install Dictation with Voxtype", "安装 Voxtype 语音输入"],
+  ["Click to install voice dictation for Omarchy.", "点击为 Omarchy 安装语音输入。"],
+  ["FIDO2 authfile needs attention", "FIDO2 认证文件需要处理"],
+  ["New theme", "新主题"],
+  ["Your new theme is catppuccin", "新主题为 catppuccin"],
+  ["New font", "新字体"],
+  ["Your new font is JetBrainsMono", "新字体为 JetBrainsMono"],
+  ["Update Performed", "更新完成"],
+  ["Your system is now up to date", "系统已是最新版本"]
+]) {
+  const actual = translate(input, "omarchy-action")
+  if (actual !== expected) throw new Error(`通知未汉化：${input} -> ${actual}`)
+}
+NODE
 
 # 文本替换一旦破坏括号配对，QML 会整块加载失败，而 grep 抓不到，所以真跑一遍语法检查。
 qmllint_bin=$(command -v qmllint || true)

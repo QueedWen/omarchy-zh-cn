@@ -339,7 +339,9 @@ const updateScriptReplacements = {
     ["Unknown option: $1", "未知选项：$1", "未知选项"],
     ["Waiting for pacman transaction to finish before running Omarchy migrations...", "正在等待 pacman 事务完成，然后运行 Omarchy 迁移…", "等待 pacman"],
     ["Pacman transaction is still running; Omarchy migrations will retry on next login.", "pacman 事务仍在运行；Omarchy 迁移将在下次登录时重试。", "迁移延后"],
-    ["Running migration (${name%.sh})", "正在运行迁移（${name%.sh}）", "迁移标题"]
+    ["Running migration (${name%.sh})", "正在运行迁移（${name%.sh}）", "迁移标题"],
+    ['OMARCHY_PATH="$OMARCHY_PATH" bash -euo pipefail "$file" 3<&-',
+      'OMARCHY_PATH="$OMARCHY_PATH" omarchy-migrate-zh-run "$file" 3<&-', "迁移执行"]
   ],
   "omarchy-update-aur-pkgs": [
     ["Update AUR packages", "更新 AUR 软件包", "标题"],
@@ -390,6 +392,271 @@ const updateScriptReplacements = {
     ["Usage: omarchy-hook [name] [args...]", "用法：omarchy-hook [名称] [参数...]", "用法"],
     ["Hook failed:", "钩子执行失败：", "失败提示"]
   ]
+};
+
+// 迁移脚本每次发行都会更新，逐条改系统文件不现实，所以在执行时生成一份临时副本，
+// 只把整条英文消息换成中文。未收录的文案保持原文，脚本逻辑一律不动。
+const migrationZh = {
+  "A browser started during the Copy URL shortcut repair and may undo it on exit.":
+    "有浏览器在修复「复制网址」快捷键期间启动，退出时可能撤销修复。",
+  "A browser undid the Copy URL shortcut repair on exit.":
+    "有浏览器在退出时撤销了「复制网址」快捷键修复。",
+  "A running browser would undo the Copy URL shortcut repair.":
+    "正在运行的浏览器会撤销「复制网址」快捷键修复。",
+  "Add the agents widget to the bar": "在状态栏添加 AI 助手组件",
+  "Add the keyboard layout widget to the bar": "在状态栏添加键盘布局组件",
+  "Add webp decoding to the shell": "为 shell 添加 webp 解码支持",
+  "Add WhatsApp Slim extension to Brave Origin flags for existing installs":
+    "为现有安装的 Brave Origin 参数添加 WhatsApp Slim 扩展",
+  "Add WhatsApp Slim extension to Chromium-based browsers":
+    "为 Chromium 系浏览器添加 WhatsApp Slim 扩展",
+  "Add yt-dlp download extension (Alt+Shift+D) to Chromium-based browsers":
+    "为 Chromium 系浏览器添加 yt-dlp 下载扩展（Alt+Shift+D）",
+  "Administrator privileges are required to close the password-only SSH server. Run omarchy-migrate again from a terminal.":
+    "关闭仅允许密码登录的 SSH 服务需要管理员权限。请在终端中重新运行 omarchy-migrate。",
+  "Administrator privileges are required to harden the existing SSH setup. Run omarchy-migrate again from a terminal.":
+    "加固现有 SSH 配置需要管理员权限。请在终端中重新运行 omarchy-migrate。",
+  "Administrator privileges are required to quarantine the vulnerable legacy udev rule. Ask an administrator to run omarchy-migrate.":
+    "隔离存在风险的旧 udev 规则需要管理员权限。请让管理员运行 omarchy-migrate。",
+  "Administrator privileges are required to remove the vulnerable legacy udev rule. Ask an administrator to run omarchy-migrate.":
+    "移除存在风险的旧 udev 规则需要管理员权限。请让管理员运行 omarchy-migrate。",
+  "Administrator privileges are required to repair the vulnerable legacy udev rule. Ask an administrator to run omarchy-migrate.":
+    "修复存在风险的旧 udev 规则需要管理员权限。请让管理员运行 omarchy-migrate。",
+  "Announce process crashes and offer an AI diagnosis": "通知进程崩溃并提供 AI 诊断",
+  "Auto-mount removable drives by default with udiskie": "默认用 udiskie 自动挂载可移动磁盘",
+  "Backfill hardware support and tmux settings added before Omarchy quattro":
+    "补齐 Omarchy quattro 之前新增的硬件支持和 tmux 设置",
+  "Cannot complete the privileged installer-artifact repair. An administrator must run omarchy-migrate to repair this machine.":
+    "无法完成需要特权的安装残留修复。需要管理员运行 omarchy-migrate 修复本机。",
+  "Cannot harden printer discovery: the existing cups-browsed user or group is not a dedicated system account.":
+    "无法加固打印机发现：现有的 cups-browsed 用户或组不是专用系统账户。",
+  "Close the browser windows, then run: omarchy-migrate": "请关闭浏览器窗口，然后运行：omarchy-migrate",
+  "Close the browser windows to repair the Copy URL shortcut, then continue":
+    "请关闭浏览器窗口以修复「复制网址」快捷键，然后继续",
+  "Compose sequences (CapsLock m s) will not work until the next login.":
+    "组合键序列（CapsLock m s）将在下次登录后才生效。",
+  "Configure locate to skip Btrfs snapshots and index Btrfs subvolumes":
+    "配置 locate 跳过 Btrfs 快照并索引 Btrfs 子卷",
+  "Could not finish the legacy udev-rule repair. Ask an administrator to run omarchy-migrate.":
+    "未能完成旧 udev 规则修复。请让管理员运行 omarchy-migrate。",
+  "Could not reload udev after removing a vulnerable legacy rule. Ask an administrator to run omarchy-migrate.":
+    "移除存在风险的旧规则后未能重载 udev。请让管理员运行 omarchy-migrate。",
+  "Detect dropped SSH connections quickly instead of leaving terminals hung":
+    "快速检测断开的 SSH 连接，避免终端卡住",
+  "Disable Limine Snapper warning notifier": "关闭 Limine 的 Snapper 警告提示",
+  "Disable SSH password authentication, or sshd itself when no key is authorized":
+    "关闭 SSH 密码认证；没有可用密钥时直接停用 sshd",
+  "Disabling SSH password authentication on the existing key-based SSH setup...":
+    "正在为现有的密钥登录 SSH 配置关闭密码认证…",
+  "Drop Kvantum now that Qt apps follow the theme through the GTK platform theme":
+    "移除 Kvantum：Qt 应用现在通过 GTK 平台主题跟随主题",
+  "Drop the default input group grant, which allowed unprivileged keylogging":
+    "取消默认的 input 组授权，它允许非特权用户记录键盘输入",
+  "Drop the retired notification image cache": "清理已废弃的通知图片缓存",
+  "Enable Kitty cwd lookup through a remote control socket":
+    "通过远程控制套接字启用 Kitty 的工作目录查询",
+  "Enable secure remote Neovim clipboard support": "启用安全的 Neovim 远程剪贴板支持",
+  "Gate sudo and polkit fingerprint auth behind the lid state (password when the lid is shut)":
+    "按笔记本开合状态决定 sudo 和 polkit 的指纹认证（合盖时改用密码）",
+  "Generate image picker thumbnails with libvips": "用 libvips 生成图片选择器缩略图",
+  "Give SSH commands the user-level tool paths via the PAM environment":
+    "通过 PAM 环境为 SSH 会话提供用户级工具路径",
+  "Give the pre-suspend lock a window it can actually finish in":
+    "给睡眠前锁定留出真正能完成的时间窗口",
+  "Install ddcutil for external monitor brightness control": "安装 ddcutil 以控制外接显示器亮度",
+  "Install default coding agent mise wrappers": "安装默认编程助手的 mise 包装脚本",
+  "Install herdr from the Omarchy package repo and seed its config":
+    "从 Omarchy 软件源安装 herdr 并初始化其配置",
+  "Install MPRIS support for mpv": "为 mpv 安装 MPRIS 支持",
+  "Install oh-my-pi (omp) via mise wrapper": "通过 mise 包装脚本安装 oh-my-pi（omp）",
+  "Install QR code scanning support": "安装二维码扫描支持",
+  "Install qrencode for Wi-Fi QR sharing": "安装 qrencode 以支持无线网络二维码分享",
+  "Install the native messaging host for the Chromium Copy URL extension":
+    "为 Chromium「复制网址」扩展安装本机消息宿主",
+  "Install the speaker tuning for XPS 2026 14/16": "安装 XPS 2026 14/16 的扬声器调音",
+  "Invite existing installs to pick a default agent": "提示现有安装选择默认 AI 助手",
+  "Keep non-Latin keyboard layouts out of the initramfs so the LUKS passphrase stays typeable":
+    "让非拉丁键盘布局不进入 initramfs，保证 LUKS 密码可以输入",
+  "Keep Wi-Fi power save off for lower latency": "保持无线网络省电模式关闭以降低延迟",
+  "Leaving it alone. If you did not create it, remove it and re-run Setup > Security > Fido2.":
+    "不做处理。如果不是你创建的，请删除它并重新运行设置 > 安全 > Fido2。",
+  "Leaving it alone. Remove it and re-run Setup > Security > Fido2.":
+    "不做处理。请删除它并重新运行设置 > 安全 > Fido2。",
+  "Let systemd-oomd kill a runaway app instead of the whole session":
+    "让 systemd-oomd 结束失控的应用，而不是整个会话",
+  "Make Shift+Enter distinguishable for terminals and Codex": "让终端和 Codex 能区分 Shift+Enter",
+  "Move stock Hyprland user overrides into package defaults":
+    "把自带的 Hyprland 用户覆盖项并入软件包默认值",
+  "Move the bar indicators to the left of the clock": "把状态栏指示器移到日期时间左侧",
+  "Move this install to the opt-in docker group default (the group is root-equivalent)":
+    "把本机改为需手动选择的 docker 组默认值（该组权限等同 root）",
+  "Move zram tuning to a vendor drop-in": "把 zram 调优移到厂商 drop-in 配置",
+  "No usable SSH key is authorized, so sshd only accepted password logins. The SSH server has been disabled: run omarchy-setup-security-sshd to set it up with key-based authentication, or re-enable sshd to accept password logins anyway.":
+    "没有可用的 SSH 密钥被授权，sshd 只能接受密码登录。SSH 服务已停用：运行 omarchy-setup-security-sshd 配置密钥登录，或重新启用 sshd 继续接受密码登录。",
+  "Normalize Snapper snapshot services": "统一 Snapper 快照服务配置",
+  "Omarchy's drop-in overrides it. Move your changes to":
+    "Omarchy 的 drop-in 会覆盖它。请把你的改动移到",
+  "/etc/systemd/zram-generator.conf.d/99-local.conf to keep them in effect.":
+    "/etc/systemd/zram-generator.conf.d/99-local.conf 才能继续生效。",
+  "Only check for pending migrations at login, not on every package update":
+    "只在登录时检查待执行迁移，不再每次软件包更新都检查",
+  "Pin browser password store to gnome-libsecret (prevents cookie/login loss on Hyprland)":
+    "把浏览器密码库固定为 gnome-libsecret（避免 Hyprland 下丢失 Cookie 和登录状态）",
+  "Point rc-channel installs at the rc package repository": "让 rc 通道的安装使用 rc 软件源",
+  "Re-run the T2 defaults migration that a broken hardware check skipped":
+    "重新执行因硬件检查缺陷被跳过的 T2 默认值迁移",
+  "Re-stage the current theme so an installed theme's code is dropped":
+    "重新落地当前主题，去掉已安装主题携带的代码",
+  "Rebuild the boot image when it predates the Limine kernel command line":
+    "当启动镜像早于 Limine 内核命令行时重建它",
+  "Rebuild the initramfs so NVIDIA-only systems shed nouveau's unused GSP firmware":
+    "重建 initramfs，让纯 NVIDIA 系统去掉 nouveau 未使用的 GSP 固件",
+  "Refresh mise stubs so tools take new releases immediately": "刷新 mise 存根，让工具立即使用新版本",
+  "Regenerate mise wrappers to stop them recursing through PATH":
+    "重新生成 mise 包装脚本，避免通过 PATH 递归调用",
+  "Register the native messaging hosts for the bundled Chromium extensions":
+    "为随附的 Chromium 扩展注册本机消息宿主",
+  "Relink agent skill symlinks to default/agents/skills/omarchy":
+    "把 AI 助手技能软链接重新指向 default/agents/skills/omarchy",
+  "Relink Neovim theme to Omarchy current state": "把 Neovim 主题重新链接到 Omarchy 当前状态",
+  "Remember Bluetooth on and off through the rfkill soft block":
+    "通过 rfkill 软屏蔽记住蓝牙开关状态",
+  "Remove leading zero from bar clock date": "去掉状态栏日期中的前导零",
+  "Remove privileged files left behind by retired Omarchy installers":
+    "清理已停用的 Omarchy 安装器遗留的特权文件",
+  "Remove Snapper timeline snapshots leaked by earlier defaults":
+    "清理早期默认配置遗留的 Snapper 时间线快照",
+  "Remove the obsolete Voxtype Hyprland toggle": "移除已废弃的 Voxtype Hyprland 开关",
+  "Remove the literal \\\\n[text-bindings] line an earlier migration wrote into foot.ini":
+    "移除早期迁移写入 foot.ini 的那行字面量 \\\\n[text-bindings]",
+  "Remove the tmux alert hooks and its bar indicator": "移除 tmux 提醒钩子和对应状态栏指示器",
+  "Rename the model usage widget to agents and prime its data files":
+    "把模型用量组件重命名为 agents 并初始化其数据文件",
+  "Repair legacy XCompose and remove vulnerable Omarchy 3 power udev rules":
+    "修复旧版 XCompose，并移除 Omarchy 3 中存在风险的电源 udev 规则",
+  "Repair Neovim theme symlinks the earlier relink missed":
+    "修复上一次重链接漏掉的 Neovim 主题软链接",
+  "Repair the Copy URL shortcut for profiles that predate its pinned extension id":
+    "为早于固定扩展 ID 的配置文件修复「复制网址」快捷键",
+  "Repair the pre-suspend lock monitor's graphical session environment":
+    "修复睡眠前锁定监视器的图形会话环境",
+  "Repair theme symlinks the state-move migration left dangling":
+    "修复状态迁移遗留的失效主题软链接",
+  "Replace GNOME Calculator with Omacalc": "用 Omacalc 替换 GNOME 计算器",
+  "Replace Satty with Tensaku": "用 Tensaku 替换 Satty",
+  "Replace terminaltexteffects with ttfx": "用 ttfx 替换 terminaltexteffects",
+  "Require signed packages from the Omarchy repository": "要求 Omarchy 软件源的软件包必须签名",
+  "Retire systemd-networkd in favor of NetworkManager": "停用 systemd-networkd，改用 NetworkManager",
+  "Run the WPA handshake in software on Macs with Broadcom Wi-Fi":
+    "在配备 Broadcom 无线网卡的 Mac 上用软件完成 WPA 握手",
+  "Separate printer discovery from root and print-filter access":
+    "把打印机发现与 root、打印过滤权限分离",
+  "Skip Chromium's new first-run EULA on machines already on Quattro":
+    "在已经使用 Quattro 的机器上跳过 Chromium 新的首次运行许可协议",
+  "Speed up mouse scrolling in foot": "加快 foot 中的鼠标滚动速度",
+  "Stop the migration notifier from re-triggering itself in a loop": "避免迁移提示反复自我触发",
+  "Stop waiting for the network before showing the desktop": "不再等待网络就绪再显示桌面",
+  "Stop world-writable Chromium and Firefox policy directories":
+    "取消 Chromium 和 Firefox 策略目录的全局可写权限",
+  "Store Hyprland input-device names as data instead of generated Lua":
+    "把 Hyprland 输入设备名保存为数据，而不是生成 Lua 代码",
+  "Supervise fcitx5 so CapsLock compose sequences can't silently die":
+    "守护 fcitx5，避免 CapsLock 组合键序列无声失效",
+  "Switch back to the packaged quickshell now that 0.3.1 kills synchronously":
+    "改回发行版打包的 quickshell：0.3.1 已能同步退出",
+  "Switch Brave Origin from the beta to the stable release": "把 Brave Origin 从测试版切换到稳定版",
+  "Switch fingerprint support back to stock libfprint": "把指纹支持改回原版 libfprint",
+  "Switch mise to the mise-bin package from the Omarchy repo":
+    "把 mise 换成 Omarchy 软件源的 mise-bin 软件包",
+  "Switch to the Omarchy quickshell-git build so shell restarts wait for instance exit":
+    "切换到 Omarchy 的 quickshell-git 构建，让 shell 重启等待实例退出",
+  "Take ownership of the FIDO2 authfile so it cannot be rewritten without root":
+    "接管 FIDO2 认证文件的所有权，避免非 root 用户改写",
+  "Temporarily remove automatic printer discovery": "临时移除自动打印机发现",
+  "The pre-suspend lock repair will be retried by omarchy-migrate.":
+    "omarchy-migrate 会重试睡眠前锁定修复。",
+  "Tune reclaim for swap on zram": "调整 zram 交换区的回收策略",
+  "Unpack the initramfs synchronously so Plymouth survives early boot":
+    "同步解包 initramfs，让 Plymouth 在早期启动阶段不被中断",
+  "Update Hyprland Lua entrypoint to load Omarchy bootstrap":
+    "更新 Hyprland Lua 入口以加载 Omarchy 引导",
+  "Update T2 Mac suspend, Touch Bar, and fan defaults": "更新 T2 Mac 的睡眠、Touch Bar 和风扇默认值",
+  "Use dua for Disk Usage TUI": "使用 dua 作为磁盘占用终端工具",
+  "sshd does not apply the hardening drop-in, so an earlier rule or a config without the sshd_config.d include wins.":
+    "sshd 没有应用加固配置，更早的规则或未包含 sshd_config.d 的配置会优先生效",
+  "sshd rejected its configuration.": "sshd 拒绝了自身配置",
+  "  Could not create a safe staging file beside $authfile.":
+    "  无法在 $authfile 旁创建安全的暂存文件。",
+  "Deleting $(wc -w <<<\"$leaked\") leaked timeline snapshots (disk space is reclaimed in the background)":
+    "正在删除 $(wc -w <<<\"$leaked\") 个遗留时间线快照（磁盘空间会在后台回收）",
+  "$1 SSH password authentication remains enabled; run omarchy-setup-security-sshd to harden manually.":
+    "$1，因此 SSH 密码认证仍处于启用状态；运行 omarchy-setup-security-sshd 可手动加固。",
+  "$HOME is group- or world-writable, so sshd would ignore the authorized key.":
+    "$HOME 允许组或其他用户写入，sshd 会忽略已授权的密钥",
+  "$authfile is a symlink, not a regular file.": "$authfile 是符号链接，不是普通文件。",
+  "$authfile is not a regular file.": "$authfile 不是普通文件。",
+  "$failed snapshots could not be deleted. Finish with: sudo snapper -c root delete <number>":
+    "有 $failed 个快照无法删除。可手动完成：sudo snapper -c root delete <编号>",
+  "Could not enable omarchy-tailscale-receive.service: $error":
+    "无法启用 omarchy-tailscale-receive.service：$error",
+  "Could not enable systemd-oomd.service; memory pressure will still take the session down.":
+    "无法启用 systemd-oomd.service；内存压力仍可能导致会话崩溃。",
+  "Could not inspect graphical-session.target: $graphical_state":
+    "无法检查 graphical-session.target：$graphical_state",
+  "Could not inspect legacy udev rules under $rules_dir. Ask an administrator to run omarchy-migrate.":
+    "无法检查 $rules_dir 下的旧 udev 规则。请让管理员运行 omarchy-migrate。",
+  "Could not inspect omarchy-sleep-lock.service: $sleep_lock_state":
+    "无法检查 omarchy-sleep-lock.service：$sleep_lock_state",
+  "Could not inspect sshd's effective configuration.": "无法检查 sshd 的实际生效配置",
+  "Could not inspect the legacy udev rule at $rule_file. Ask an administrator to run omarchy-migrate.":
+    "无法检查 $rule_file 处的旧 udev 规则。请让管理员运行 omarchy-migrate。",
+  "Could not inspect the permissions on $HOME.": "无法检查 $HOME 的权限",
+  "Could not quarantine the vulnerable legacy udev rule at $rule_file. Ask an administrator to run omarchy-migrate.":
+    "无法隔离 $rule_file 处存在风险的旧 udev 规则。请让管理员运行 omarchy-migrate。",
+  "Could not read $authorized_keys to check for a usable key.":
+    "无法读取 $authorized_keys 以确认是否有可用密钥",
+  "Could not reach the running user service manager: $error":
+    "无法连接正在运行的用户服务管理器：$error",
+  "Could not reload the user service manager: $error": "无法重载用户服务管理器：$error",
+  "Could not remove Kvantum; leaving it installed.": "无法移除 Kvantum，已保留安装。",
+  "Could not reset omarchy-sleep-lock.service: $error":
+    "无法重置 omarchy-sleep-lock.service：$error",
+  "Could not restart omarchy-sleep-lock.service: $error":
+    "无法重启 omarchy-sleep-lock.service：$error",
+  "Could not rewrite $config_file; remove the TmuxAlert indicator by hand.":
+    "无法改写 $config_file；请手动移除 TmuxAlert 指示器。",
+  "Could not rewrite $tmux_config; remove the tmux alert hooks by hand.":
+    "无法改写 $tmux_config；请手动移除 tmux 提醒钩子。",
+  "Could not start omarchy-fcitx5.service: $error": "无法启动 omarchy-fcitx5.service：$error",
+  "Could not stop stale omarchy-sleep-lock.service: $error":
+    "无法停止残留的 omarchy-sleep-lock.service：$error",
+  "Could not tighten the permissions on $authorized_keys.": "无法收紧 $authorized_keys 的权限",
+  "Keeping $USER in the input group: controller or ydotool support is installed.":
+    "保留 $USER 的 input 组权限：已安装手柄或 ydotool 支持。",
+  "Keeping $zram_conf; it has local edits.": "保留 $zram_conf：它有本地修改。",
+  "Move current Omarchy theme state to ~/.local/state": "把 Omarchy 当前主题状态移到 ~/.local/state",
+  "omarchy-sleep-lock.service did not stay active after restart.":
+    "omarchy-sleep-lock.service 重启后未能保持运行。",
+  "Quarantined the modified legacy rule as $backup so udev cannot execute it. Review the preserved file before restoring any safe custom actions.":
+    "已把修改过的旧规则隔离为 $backup，避免 udev 执行它。恢复任何安全的自定义操作前，请先检查保留的文件。",
+  "Rename the T2 Mac BCE module (apple-bce → t2bce) and repair the boot image":
+    "重命名 T2 Mac 的 BCE 模块（apple-bce → t2bce）并修复启动镜像",
+  "Removed $USER from the input group. Log out and back in to apply.":
+    "已从 input 组移除 $USER。注销后重新登录生效。",
+  "Save incoming Taildrop files to ~/Downloads": "把接收到的 Taildrop 文件保存到 ~/Downloads",
+  "Something still depends on Kvantum; leaving it installed.": "仍有组件依赖 Kvantum，已保留安装。",
+  "Switched the [omarchy] repository to the rc channel to match this machine's rc mirror.":
+    "已将 [omarchy] 软件源切换到 rc 通道，与本机的 rc 镜像保持一致。",
+  "The booted kernel is missing ${missing[*]}; rebuilding the boot image":
+    "当前内核缺少 ${missing[*]}，正在重建启动镜像",
+  "The hardening config is installed and valid, but sshd did not reload; it takes effect when sshd next restarts.":
+    "加固配置已安装且有效，但 sshd 未重载；将在 sshd 下次重启时生效。",
+  "Theme '$theme_name' no longer exists; applying the default instead":
+    "主题 “$theme_name” 已不存在，将改用默认主题",
+  "This machine no longer uses the kms hook; rebuilding the initramfs without nouveau":
+    "本机已不再使用 kms 钩子，正在重建不含 nouveau 的 initramfs",
+  "Unmask wpa_supplicant so NetworkManager can bring wifi back":
+    "取消屏蔽 wpa_supplicant，让 NetworkManager 恢复无线网络"
 };
 
 const emojiKeywordFallbacks = [
@@ -1140,7 +1407,21 @@ const notificationLocalizationSource = String.raw`function translate(value, appN
     "Screen did not lock before suspend": "睡眠前屏幕未能锁定",
     "Refusing unsafe monitor name": "拒绝使用不安全的显示器名称",
     "Use Super + Alt + Home to save one for this workspace.": "按 Super + Alt + Home 为此工作区保存窗口宽度。",
-    "Restore using Super + Home on this workspace.": "在此工作区按 Super + Home 恢复窗口宽度。"
+    "Restore using Super + Home on this workspace.": "在此工作区按 Super + Home 恢复窗口宽度。",
+    "Editing Cloned Plugin": "正在编辑克隆插件",
+    "Original plugin has been replace by clone.": "原插件已被克隆版本取代。",
+    "Restart Foot to apply the new terminal font size": "重启 Foot 以应用新的终端字体大小",
+    "Setup Fingerprint Reader": "设置指纹识别",
+    "Enable sudo and unlocking with your fingerprint.": "使用指纹解锁并授权 sudo。",
+    "Set your default agent": "设置默认 AI 助手",
+    "Let your favorite agent help with Omarchy.": "让你常用的 AI 助手协助使用 Omarchy。",
+    "Install Dictation with Voxtype": "安装 Voxtype 语音输入",
+    "Click to install voice dictation for Omarchy.": "点击为 Omarchy 安装语音输入。",
+    "FIDO2 authfile needs attention": "FIDO2 认证文件需要处理",
+    "New theme": "新主题",
+    "New font": "新字体",
+    "Update Performed": "更新完成",
+    "Your system is now up to date": "系统已是最新版本"
   }
   if (Object.prototype.hasOwnProperty.call(exact, original)) return exact[original]
 
@@ -1176,6 +1457,8 @@ const notificationLocalizationSource = String.raw`function translate(value, appN
   if ((match = original.match(/^Your (\d+) minutes are up$/))) return match[1] + " 分钟时间已到"
   if ((match = original.match(/^(.+) in (\d+) minutes$/))) return match[1] + "（" + match[2] + " 分钟后）"
   if ((match = original.match(/^(.+) installed$/))) return match[1] + " 已安装"
+  if ((match = original.match(/^Your new theme is (.+)$/))) return "新主题为 " + match[1]
+  if ((match = original.match(/^Your new font is (.+)$/))) return "新字体为 " + match[1]
   if ((match = original.match(/^Sent to (.+)$/))) return "已发送到 " + match[1]
   if ((match = original.match(/^Could not send to (.+)$/))) return "无法发送到 " + match[1]
   if ((match = original.match(/^Transcoding video…$/))) return "正在转码视频…"
@@ -1206,6 +1489,86 @@ const notificationLocalizationSource = String.raw`function translate(value, appN
 
 if (typeof module !== "undefined") module.exports = { translate: translate }
 `;
+
+// 迁移脚本的运行时替换器：只把整条英文消息换成中文，其余内容原样保留。
+// 生成失败、语法不过或读取异常时一律退回原文执行，绝不改变迁移结果。
+const migrationRunnerTemplate = String.raw`#!/usr/bin/env node
+
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const { spawnSync } = require("child_process");
+
+const table = __TABLE__;
+const source = process.argv[2];
+const extraArgs = process.argv.slice(3);
+
+function run(file) {
+  const result = spawnSync("bash", ["-euo", "pipefail", file, ...extraArgs], { stdio: "inherit" });
+  if (result.error) {
+    console.error(result.error.message);
+    return 1;
+  }
+  return result.status === null ? 1 : result.status;
+}
+
+if (!source) {
+  console.error("用法：omarchy-migrate-zh-run <迁移脚本> [参数...]");
+  process.exit(2);
+}
+
+let workDir = null;
+let target = source;
+
+try {
+  const original = fs.readFileSync(source, "utf8");
+  let content = original;
+  for (const [from, to] of Object.entries(table)) {
+    // 直接在脚本文本里找被引号包住的整条消息。这里不能用 JSON.stringify：
+    // 它会把消息里的引号和反斜杠转义，反而匹配不到原文。split/join 同时避免
+    // 替换串里的 $ 被当成替换模式解释。
+    const search = '"' + from + '"';
+    if (!content.includes(search)) continue;
+    content = content.split(search).join('"' + to + '"');
+  }
+  if (content !== original) {
+    const runtimeDir = process.env.XDG_RUNTIME_DIR || os.tmpdir();
+    workDir = fs.mkdtempSync(path.join(runtimeDir, "omarchy-migrate-zh-"));
+    const candidate = path.join(workDir, path.basename(source));
+    fs.writeFileSync(candidate, content, { mode: 0o600 });
+    // 替换必须过语法闸门，改坏了就退回原文。
+    if (spawnSync("bash", ["-n", candidate]).status === 0) target = candidate;
+    else console.error("迁移脚本替换后语法不通过，改为运行原文：" + source);
+  }
+} catch (error) {
+  console.error("迁移脚本替换失败，改为运行原文：" + error.message);
+  target = source;
+}
+
+const status = run(target);
+if (workDir) fs.rmSync(workDir, { recursive: true, force: true });
+process.exit(status);
+`;
+
+function migrationRunnerSource() {
+  return migrationRunnerTemplate
+    .split("__TABLE__")
+    .join(JSON.stringify(migrationZh, null, 2).split("\n").map((line, index) => (index === 0 ? line : "  " + line)).join("\n"));
+}
+
+// 迁移通知的点击动作默认调用系统 omarchy-migrate。通知里的命令是数据，改不到源码，
+// 所以在执行动作前把这一条换成中文迁移脚本，终端里的迁移输出才会一起汉化。
+function migrationActionSource() {
+  const migrateZhPath = path.join(updateLocalizerDir, "omarchy-migrate");
+  return `  function localizedArgv(argv) {
+    var launcher = "omarchy-launch-floating-terminal-with-presentation"
+    if (!argv || argv.length !== 2 || argv[0] !== launcher) return argv
+    if (argv[1] !== "omarchy-migrate") return argv
+    return [launcher, ${JSON.stringify(migrateZhPath)}]
+  }
+
+`;
+}
 
 function stripJsonc(raw) {
   return String(raw || "").replace(/^\s*\/\/[^\n]*(\n|$)/gm, "").replace(/,(\s*[}\]])/g, "$1");
@@ -1393,6 +1756,12 @@ function syncUpdateScripts() {
     fs.chmodSync(temporary, 0o755);
     fs.renameSync(temporary, target);
   }
+
+  const runner = path.join(updateLocalizerDir, "omarchy-migrate-zh-run");
+  const runnerTemporary = `${runner}.new-${process.pid}`;
+  fs.writeFileSync(runnerTemporary, migrationRunnerSource(), { mode: 0o755 });
+  fs.chmodSync(runnerTemporary, 0o755);
+  fs.renameSync(runnerTemporary, runner);
 }
 
 function normalizedEmoji(value) {
@@ -1691,7 +2060,7 @@ ${openSource}`)
         }
         after = after
           .replace(elideSource, `  function localizedStatus(value) {
-    var messages = { "Not installed": "未安装", "Stopped": "已停止" }
+    var messages = { "Not installed": "未安装", "Stopped": "已停止", "Unavailable": "不可用" }
     var message = String(value || "")
     return messages[message] || message
   }
@@ -1809,6 +2178,16 @@ ${functionSource}`)
 
 ${functionSource}`)
           .replace(errorSource, "root.stderrText = root.localizedCommandError(text)");
+      }
+      if (sourceId === "omarchy.notifications" && path.basename(file) === "Service.qml") {
+        const argvSource = '    var argv = NotificationLogic.parseExecArgv(entry ? entry.execArgv : "")';
+        const invokeAnchor = "  function invokePopupDefault(index) {";
+        if (!after.includes(argvSource) || (after.split(invokeAnchor).length - 1) !== 1) {
+          throw new Error("通知插件结构已变化：点击动作");
+        }
+        after = after
+          .split(invokeAnchor).join(migrationActionSource() + invokeAnchor)
+          .split(argvSource).join('    var argv = localizedArgv(NotificationLogic.parseExecArgv(entry ? entry.execArgv : ""))');
       }
       if (sourceId === "omarchy.notifications" && path.basename(file) === "NotificationCard.qml") {
         after = after

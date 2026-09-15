@@ -73,6 +73,7 @@ Kimi settings live at `~/.config/omarchy/agents/kimi.json`:
 - Battery status notifications
 - Chinese emoji search keywords when a local Fcitx 5/Rime emoji annotation file is available
 - Lock screen, authentication, and Omarchy-controlled snapshot, package, migration, error, and restart messages, including the firmware and time update entries
+- Migration script output: whole English messages are replaced in a temporary copy at run time, system files stay untouched, and messages that are not in the table stay in English
 - The `Super + K` keyboard shortcuts panel and command descriptions, plus the plugin menu and plugin pickers in the setup menu
 - Automatic resynchronization after Omarchy updates
 
@@ -172,6 +173,8 @@ The project writes only to the following user directories:
 ~/.local/share/omarchy-zh-cn/
 ~/.local/state/omarchy-zh-cn/
 ```
+
+When a migration runs, the temporary localized copy is written under `$XDG_RUNTIME_DIR` (usually `/run/user/<uid>`) and removed as soon as it finishes.
 
 `/usr/share/omarchy` always remains read-only. The installer does not collect or upload notification history, network information, location data, tokens, or other user data.
 

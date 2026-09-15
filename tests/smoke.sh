@@ -43,6 +43,12 @@ for expected in \
   '"Keyboard layout": "键盘布局"' \
   '"同步已暂停"' \
   '"Tailscale 已断开连接"' \
+  '"Restart Foot to apply the new terminal font size": "重启 Foot 以应用新的终端字体大小"' \
+  '"FIDO2 authfile needs attention": "FIDO2 认证文件需要处理"' \
+  '"Install MPRIS support for mpv": "为 mpv 安装 MPRIS 支持"' \
+  '"$1，因此 SSH 密码认证仍处于启用状态；运行 omarchy-setup-security-sshd 可手动加固。"' \
+  'omarchy-migrate-zh-run "$file" 3<&-' \
+  '"Unavailable": "不可用"' \
   'function localizedMessage' \
   'function localizedPrompt' \
   'function localizedStatus' \

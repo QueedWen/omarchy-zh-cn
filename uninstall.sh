@@ -25,7 +25,7 @@ UPDATE_HELPERS=(
   omarchy-update-aur-pkgs omarchy-update-mise omarchy-update-orphan-pkgs
   omarchy-update-restart omarchy-update-dev omarchy-update-stay-awake
   omarchy-update-analyze-logs omarchy-hook omarchy-system-reboot
-  omarchy-restart-shell
+  omarchy-restart-shell omarchy-migrate-zh-run
 )
 ASSUME_YES=0
 

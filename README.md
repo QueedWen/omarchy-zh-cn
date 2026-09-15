@@ -73,6 +73,7 @@ Kimi 配置文件位于 `~/.config/omarchy/agents/kimi.json`：
 - 电池状态通知
 - 检测到 Fcitx 5/Rime 表情注释文件时，为表情选择器补充中文搜索关键词
 - 锁屏、权限认证，以及 Omarchy 更新流程（含固件与时间更新）中的快照、软件包、迁移、错误与重启提示
+- 迁移脚本的输出：执行前在临时副本上替换整条英文消息，不改动系统文件，未收录的新文案保持原文
 - `Super + K` 快捷键面板及功能说明，以及设置菜单里的插件菜单和插件选择列表
 - Omarchy 更新后的自动重新同步
 
@@ -172,6 +173,8 @@ omarchy-zh-sync
 ~/.local/share/omarchy-zh-cn/
 ~/.local/state/omarchy-zh-cn/
 ```
+
+运行迁移时，替换用的临时副本写在 `$XDG_RUNTIME_DIR`（通常是 `/run/user/<uid>`），执行结束立即删除。
 
 `/usr/share/omarchy` 始终只读。安装器不会收集或上传通知历史、网络信息、位置、Token 或其他用户数据。
 
