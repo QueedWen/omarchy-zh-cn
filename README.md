@@ -42,7 +42,7 @@
 
 | 服务 | 用量来源 | 启用方式 |
 | --- | --- | --- |
-| Codex | Codex app-server 与本地会话 | 登录 Codex CLI；兼容脚本不会读取或复制令牌 |
+| Codex | Codex app-server 与本地会话 | 登录 Codex CLI；兼容脚本不会读取或复制 Token |
 | Grok | Grok Build 账户限额与余额接口 | 运行 `grok login` |
 | Kimi | Kimi Coding Plan 周额度与 5 小时窗口 | 设置 `KIMI_API_KEY`，或使用权限为 `0600` 的配置文件 |
 
@@ -68,9 +68,12 @@ Kimi 配置文件位于 `~/.config/omarchy/agents/kimi.json`：
 - 天气使用摄氏度，风速使用 `km/h`，地名保持数据源原文
 - 提醒、通知历史和 Omarchy 动态通知
 - 系统托盘、剪贴板、表情、图片选择器、测速和 Wi-Fi 二维码
+- Dropbox、Tailscale、媒体和麦克风面板
+- 音量、亮度、麦克风、触控板、电源等屏幕提示
+- 电池状态通知
 - 检测到 Fcitx 5/Rime 表情注释文件时，为表情选择器补充中文搜索关键词
-- 锁屏、权限认证，以及 Omarchy 更新过程中的快照、软件包、迁移、错误与重启提示
-- `Super + K` 快捷键面板及功能说明
+- 锁屏、权限认证，以及 Omarchy 更新流程（含固件与时间更新）中的快照、软件包、迁移、错误与重启提示
+- `Super + K` 快捷键面板及功能说明，以及设置菜单里的插件菜单和插件选择列表
 - Omarchy 更新后的自动重新同步
 
 专有名称、命令、真实文件路径和第三方应用内容不会强制翻译，例如 Omarchy、Hyprland、Codex、DNS、Docker 和 `Downloads`。
@@ -115,11 +118,11 @@ cd omarchy-zh-cn
 安装器会：
 
 1. 检查 Omarchy 版本和依赖。
-2. 使用官方 `omarchy plugin clone` 创建 22 个用户插件克隆。
-3. 安装本地化同步器并生成中文插件。
+2. 安装本地化同步器，并生成 27 个中文插件克隆。
+3. 让你正在使用的栏位组件切换到对应克隆，没在用的保持待命，状态栏布局不变。
 4. 为 Agents 插件安装 Codex/Grok/Kimi 用量收集扩展及主题图标。
 5. 将天气单位设为公制。
-6. 将 `Super + K` 指向中文快捷键面板。
+6. 将 `Super + K` 指向中文快捷键面板，并把设置菜单的插件管理入口指向中文插件菜单。
 7. 从本机当前版本生成中文更新脚本，并将 Omarchy 菜单和状态栏的系统更新入口接入中文更新流程。
 8. 安装 `post-update` 钩子，以便系统更新后自动同步。
 
@@ -170,7 +173,7 @@ omarchy-zh-sync
 ~/.local/state/omarchy-zh-cn/
 ```
 
-`/usr/share/omarchy` 始终只读。安装器不会收集或上传通知历史、网络信息、位置、令牌或其他用户数据。
+`/usr/share/omarchy` 始终只读。安装器不会收集或上传通知历史、网络信息、位置、Token 或其他用户数据。
 
 ## 开发与检查
 

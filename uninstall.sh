@@ -10,6 +10,7 @@ SHELL_FILE="$HOME/.config/omarchy/shell.json"
 HOOK_FILE="$HOME/.config/omarchy/hooks/post-update.d/omarchy-zh-post-update"
 SYNC_TARGET="$HOME/.local/bin/omarchy-zh-sync"
 KEYBINDINGS_TARGET="$HOME/.local/bin/omarchy-menu-keybindings-zh"
+PLUGIN_MENU_TARGET="$HOME/.local/bin/omarchy-menu-plugin-zh"
 UPDATE_TARGET="$HOME/.local/bin/omarchy-update-zh"
 UPDATE_CONFIRM_DIR="$HOME/.local/share/omarchy-zh-cn/bin"
 UPDATE_CONFIRM_TARGET="$UPDATE_CONFIRM_DIR/omarchy-update-confirm"
@@ -17,6 +18,7 @@ AGENTS_OVERLAY_TARGET="$HOME/.local/share/omarchy-zh-cn/agents"
 UPDATE_HELPERS=(
   omarchy-update omarchy-update-pkg-prune omarchy-update-lock
   omarchy-update-requires-free-space omarchy-snapshot omarchy-update-keyring
+  omarchy-update-firmware omarchy-update-time
   omarchy-pkg-add
   omarchy-update-system-pkgs
   omarchy-update-system-pkgs-when-conflicted omarchy-migrate
@@ -118,6 +120,11 @@ if [[ -f $STATE_DIR/original/omarchy-menu-keybindings-zh ]]; then
   cp -a "$STATE_DIR/original/omarchy-menu-keybindings-zh" "$KEYBINDINGS_TARGET"
 else
   rm -f "$KEYBINDINGS_TARGET"
+fi
+if [[ -f $STATE_DIR/original/omarchy-menu-plugin-zh ]]; then
+  cp -a "$STATE_DIR/original/omarchy-menu-plugin-zh" "$PLUGIN_MENU_TARGET"
+else
+  rm -f "$PLUGIN_MENU_TARGET"
 fi
 if [[ -f $STATE_DIR/original/omarchy-update-zh ]]; then
   cp -a "$STATE_DIR/original/omarchy-update-zh" "$UPDATE_TARGET"

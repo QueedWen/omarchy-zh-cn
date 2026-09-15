@@ -68,9 +68,12 @@ Kimi settings live at `~/.config/omarchy/agents/kimi.json`:
 - Celsius temperatures, `km/h` wind speeds, and original location names from the data source
 - Reminders, notification history, and Omarchy activity notifications
 - System tray, clipboard, emoji and image pickers, speed tests, and Wi-Fi QR codes
+- Dropbox, Tailscale, media, and microphone panels
+- On-screen display messages for volume, brightness, microphone, touchpad, and power actions
+- Battery status notifications
 - Chinese emoji search keywords when a local Fcitx 5/Rime emoji annotation file is available
-- Lock screen, authentication, and Omarchy-controlled snapshot, package, migration, error, and restart messages during updates
-- The `Super + K` keyboard shortcuts panel and command descriptions
+- Lock screen, authentication, and Omarchy-controlled snapshot, package, migration, error, and restart messages, including the firmware and time update entries
+- The `Super + K` keyboard shortcuts panel and command descriptions, plus the plugin menu and plugin pickers in the setup menu
 - Automatic resynchronization after Omarchy updates
 
 Proper names, commands, actual file paths, and third-party application content are not forcibly translated. Examples include Omarchy, Hyprland, Codex, DNS, Docker, and `Downloads`.
@@ -115,11 +118,11 @@ cd omarchy-zh-cn
 The installer will:
 
 1. Check the Omarchy version and dependencies.
-2. Create 22 user plugin clones through the official `omarchy plugin clone` command.
-3. Install the localization synchronizer and generate the localized plugins.
+2. Install the localization synchronizer, which generates 27 localized plugin clones.
+3. Switch the bar widgets you already use to their clones; unused ones stay ready without changing the bar layout.
 4. Install the Codex/Grok/Kimi usage extension and theme marks for the Agents plugin.
 5. Configure metric units for weather data.
-6. Map `Super + K` to the Chinese keyboard shortcuts panel.
+6. Map `Super + K` to the Chinese keyboard shortcuts panel and route the setup menu's plugin entries through the Chinese plugin menu.
 7. Generate localized update scripts from the currently installed version and route the Omarchy menu and status-bar update actions through them.
 8. Install a `post-update` hook that automatically resynchronizes after Omarchy updates.
 

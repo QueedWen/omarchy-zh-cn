@@ -16,9 +16,11 @@ const user = process.env.USER || path.basename(home);
 const pluginRoot = path.join(home, ".config/omarchy/plugins");
 const menuDefault = "/usr/share/omarchy/default/omarchy/omarchy-menu.jsonc";
 const menuUser = path.join(home, ".config/omarchy/extensions/omarchy-menu.jsonc");
-const stateDir = path.join(home, ".local/state/omarchy-zh");
+const stateDir = path.join(home, ".local/state/omarchy-zh-cn");
 const keybindingsSource = "/usr/share/omarchy/bin/omarchy-menu-keybindings";
 const keybindingsZh = path.join(home, ".local/bin/omarchy-menu-keybindings-zh");
+const pluginMenuSource = "/usr/share/omarchy/bin/omarchy-menu-plugin";
+const pluginMenuZh = path.join(home, ".local/bin/omarchy-menu-plugin-zh");
 const updateZh = path.join(home, ".local/bin/omarchy-update-zh");
 const updateSourceDir = "/usr/share/omarchy/bin";
 const updateLocalizerDir = path.join(home, ".local/share/omarchy-zh-cn/bin");
@@ -36,10 +38,11 @@ const pluginIds = [
   "omarchy.tray", "omarchy.indicators", "omarchy.system-update", "omarchy.lock", "omarchy.polkit",
   "omarchy.clipboard", "omarchy.emojis", "omarchy.image-picker",
   "omarchy.reminders", "omarchy.speedtest", "omarchy.disk-speedtest",
-  "omarchy.wifiqr"
+  "omarchy.wifiqr", "omarchy.osd", "omarchy.media", "omarchy.microphone",
+  "omarchy.dropbox", "omarchy.tailscale"
 ];
 
-const supportedArgs = new Set(["--quiet", "--no-restart", "--adopt-existing", "--help"]);
+const supportedArgs = new Set(["--quiet", "--no-restart", "--adopt-existing", "--list-plugins", "--help"]);
 for (const arg of process.argv.slice(2)) {
   if (!supportedArgs.has(arg)) throw new Error(`未知参数：${arg}`);
 }
@@ -49,7 +52,12 @@ if (process.argv.includes("--help")) {
 从当前安装的 Omarchy 4 源文件重建简体中文用户插件。
   --quiet           仅在失败时输出
   --no-restart      同步后不重启 Omarchy Shell
-  --adopt-existing  接管同名且来源匹配的现有插件克隆`);
+  --adopt-existing  接管同名且来源匹配的现有插件克隆
+  --list-plugins    按行输出本项目管理的插件来源 ID`);
+  process.exit(0);
+}
+if (process.argv.includes("--list-plugins")) {
+  console.log(pluginIds.join("\n"));
   process.exit(0);
 }
 
@@ -133,7 +141,7 @@ const zh = {
 
   "Agents": "AI 助手", "No AI coding subscriptions found.\nAgents show up here once you've used them.": "未找到 AI 编程订阅。\n使用相应助手后，它们会显示在这里。",
   "BALANCE": "余额", "Prepaid credits": "预付额度", "LIMITS": "使用限额",
-  "TOKENS BY DAY": "每日令牌用量", "TOKENS BY MODEL": "各模型令牌用量",
+  "TOKENS BY DAY": "每日 Token 用量", "TOKENS BY MODEL": "各模型 Token 用量",
   "Today": "今天", "Weekly": "每周", "Monthly": "每月", "Session": "会话",
   "Session (5-hour)": "会话（5 小时）", "Subscription": "订阅", "Limit": "限额",
   "Resets in ": "重置倒计时：", "Merged from ": "合并来源：",
@@ -214,7 +222,65 @@ const zh = {
   "When On, write this machine's local usage snapshot and merge snapshots from other machines.": "开启后保存本机用量快照，并合并其他设备的快照。",
   "A folder synced by Syncthing, Dropbox, rsync, etc.": "由 Syncthing、Dropbox 或 rsync 等工具同步的文件夹。",
   "Optional. Defaults to <hostname>.json. Use a different file name on each machine, such as laptop.json or desktop.json.": "可选。默认为 <hostname>.json；每台设备应使用不同文件名。",
-  "Optional stable device name used inside synced aggregate snapshots.": "可选。用于汇总快照的固定设备名称。"
+  "Optional stable device name used inside synced aggregate snapshots.": "可选。用于汇总快照的固定设备名称。",
+
+  "Filing files": "正在整理文件", "Distributing data": "正在分发数据",
+  "Shuffling folders": "正在整理文件夹", "Boxing bytes": "正在打包数据",
+  "Sorting stuff": "正在分类内容", "Syncing secrets": "正在同步密钥",
+  "Packing packets": "正在打包数据包", "Moving memories": "正在搬运记忆",
+  "Wrangling revisions": "正在整理版本", "Cataloging chaos": "正在梳理乱序",
+  "Pause syncing": "暂停同步", "Resume syncing": "继续同步", "Syncing paused": "同步已暂停",
+  "No synced files found.": "没有找到已同步的文件。",
+  "Login to Dropbox": "登录 Dropbox", "Dropbox CLI is not installed": "未安装 Dropbox 命令行工具",
+  "Start the authentication flow": "开始认证流程", "Install Dropbox from the service menu": "从服务菜单安装 Dropbox",
+  "Failed to read Dropbox status": "无法读取 Dropbox 状态", "Could not read Dropbox status": "无法读取 Dropbox 状态",
+  "Failed to parse Dropbox status": "无法解析 Dropbox 状态",
+  "Opened Dropbox login": "已打开 Dropbox 登录", "Dropbox login failed": "Dropbox 登录失败",
+  "Dropbox command failed": "Dropbox 命令执行失败",
+  "Not installed": "未安装", "Unknown time": "未知时间", "Just now": "刚刚",
+  "Stored": "已用空间", "RECENT FILES": "最近文件", "Untitled": "未命名",
+  "Starting Dropbox login…": "正在启动 Dropbox 登录…",
+  "m ago": " 分钟前", "h ago": " 小时前", "d ago": " 天前",
+  "mo ago": " 个月前", "y ago": " 年前",
+  "Dropbox status, storage usage, login, and recent synced files in the Omarchy bar.": "在 Omarchy 状态栏显示 Dropbox 同步状态、存储用量、登录入口和最近同步的文件。",
+  "Log in to Dropbox, view storage usage, and open recent synced files.": "登录 Dropbox、查看存储用量并打开最近同步的文件。",
+
+  "Encrypting connections": "正在加密连接", "Sending secrets": "正在发送密钥",
+  "Guarding wires": "正在守护链路", "Braiding packets": "正在编织数据包",
+  "Polishing tunnels": "正在调优隧道", "Hiding routes": "正在隐藏路由",
+  "Sealing ports": "正在封堵端口", "Sorting tailnets": "正在梳理网络",
+  "Shuffling keys": "正在轮换密钥", "Watching machines": "正在监视设备",
+  "Turn Tailscale off": "关闭 Tailscale", "Turn Tailscale on": "打开 Tailscale",
+  "Authorize this device": "授权此设备", "Choose Mullvad region": "选择 Mullvad 区域",
+  "Tailscale is disconnected": "Tailscale 已断开连接",
+  "Tailscale CLI is not installed or not on PATH.": "未安装 Tailscale 命令行工具，或它不在 PATH 中。",
+  "Search regions": "搜索区域", "No Mullvad regions found.": "没有找到 Mullvad 区域。",
+  "No machines found on this tailnet.": "没有在此网络中找到设备。",
+  "Authorize Tailscale operator": "授权 Tailscale 操作员",
+  "Allow this user to operate this Tailscale profile": "允许此用户操作该 Tailscale 配置",
+  "Send files": "发送文件", "Needs login": "需要登录",
+  "Authorizing Tailscale operator...": "正在授权 Tailscale 操作员…",
+  "Tailscale login link not available yet": "Tailscale 登录链接尚未生成",
+  "Authorize Tailscale operator to show connections": "授权 Tailscale 操作员后才能显示连接",
+  "Could not list Tailscale connections": "无法列出 Tailscale 连接",
+  "Tailscale command failed": "Tailscale 命令执行失败",
+  "Account switch failed": "切换账户失败", "Exit node selection failed": "选择出口节点失败",
+  "Tailscale authorization failed": "Tailscale 授权失败",
+  "Tailscale operator authorized": "已授权 Tailscale 操作员",
+  "Status error": "状态异常", "Unknown account": "未知账户",
+  "CONNECTIONS": "连接", "EXIT NODES": "出口节点", "MACHINES": "设备", "Account": "账户",
+  "Starting Tailscale login…": "正在启动 Tailscale 登录…",
+  "tailscale up failed": "Tailscale 连接失败",
+  "Failed to parse tailscale status": "无法解析 Tailscale 状态",
+  "Tailscale status, connection switching, machine browsing, and quick copy actions in the Omarchy bar.": "在 Omarchy 状态栏显示 Tailscale 状态、连接切换、设备浏览和快速复制操作。",
+  "Toggle Tailscale, switch connections, browse machines, and copy machine IPs or names.": "开关 Tailscale、切换连接、浏览设备，并复制设备 IP 或名称。",
+
+  "Nothing playing": "暂无播放内容", "Media source": "媒体来源",
+  "Microphone muted": "麦克风已静音", "Microphone in use": "麦克风使用中", "Microphone live": "麦克风已开启",
+  "MPRIS media control service": "MPRIS 媒体控制服务",
+  "MPRIS now-playing with playback controls": "显示当前播放内容并提供播放控制",
+  "Mic input state and mute toggle": "显示麦克风输入状态并切换静音",
+  "Quickshell volume, brightness, and status overlays.": "Quickshell 的音量、亮度和状态浮层。"
 };
 
 const updateScriptReplacements = {
@@ -247,6 +313,12 @@ const updateScriptReplacements = {
   "omarchy-update-keyring": [
     ["Update Arch signing keys", "更新 Arch 签名密钥", "标题"],
     ["Keys are correct", "密钥状态正常", "完成提示"]
+  ],
+  "omarchy-update-firmware": [
+    ["Update Firmware", "更新固件", "标题"]
+  ],
+  "omarchy-update-time": [
+    ["Updating time...", "正在更新系统时间…", "标题"]
   ],
   "omarchy-pkg-add": [
     ["Error: Package '", "错误：软件包“", "软件包错误前缀"],
@@ -354,7 +426,29 @@ const emojiKeywordFallbacks = [
 // manifest display fields, never with the global source-code replacement pass.
 const schemaZh = {
   "Dictation": "语音输入",
-  "Reminder": "提醒"
+  "Reminder": "提醒",
+  "Media": "媒体",
+  "On-screen display": "屏幕提示",
+  "Files": "文件"
+};
+
+// Built-in plugin names that only exist as system manifests, so their display
+// names can only be translated where the plugin menu lists them. The wording
+// comes from the clone manifests above, so both stay identical. Product names
+// such as Dropbox and Tailscale are deliberately absent and stay as they are.
+const pluginNameZh = {
+  "Active window": "活动窗口", "Agents": "AI 助手", "Audio": "音频",
+  "Background": "桌面背景", "Bar": "状态栏", "Battery": "电池",
+  "Bluetooth": "蓝牙", "Clipboard": "剪贴板", "Clock": "日期与时间",
+  "Dev gallery": "开发预览工具", "Disk speed test": "磁盘测速", "Display": "显示器",
+  "Emojis": "表情符号", "Idle": "空闲检测", "Image picker": "图片选择器",
+  "Indicators": "状态指示器", "Keyboard layout": "键盘布局", "Lock Screen": "锁屏",
+  "Media": "媒体", "Microphone": "麦克风", "Network": "网络",
+  "Night Light": "夜灯", "Notifications": "通知", "Omarchy menu": "Omarchy 菜单",
+  "Omarchy update": "Omarchy 更新", "On-screen display": "屏幕提示",
+  "Polkit Agent": "权限认证", "Power": "电源", "Reminders": "提醒",
+  "Spacer": "间隔占位", "Speed Test": "网络测速", "System tray": "系统托盘",
+  "Weather": "天气", "Wi-Fi QR": "无线网络二维码", "Workspaces": "工作区"
 };
 
 // Descriptions shown by the dynamic Hyprland keybinding panel. Application and
@@ -822,6 +916,9 @@ const menuZh = {
   "install.ai.grok-bot": {
     "label": "Grok 机器人"
   },
+  "install.ai.hermes": {
+    "label": "Hermes 桌面版"
+  },
   "install.gaming.xbox-cloud": {
     "label": "Xbox 云游戏"
   },
@@ -849,6 +946,13 @@ const menuZh = {
   "remove.development": {
     "label": "开发环境",
     "title": "卸载"
+  },
+  "remove.ai": {
+    "label": "人工智能",
+    "title": "卸载"
+  },
+  "remove.ai.hermes": {
+    "label": "Hermes 桌面版"
   },
   "remove.theme": {
     "label": "主题"
@@ -1040,6 +1144,13 @@ const notificationLocalizationSource = String.raw`function translate(value, appN
   }
   if (Object.prototype.hasOwnProperty.call(exact, original)) return exact[original]
 
+  function durationText(value) {
+    return String(value || "")
+      .replace(/(\d+)\s*h\s*(\d+)\s*m/, "$1 小时 $2 分")
+      .replace(/(\d+)\s*h\b/, "$1 小时")
+      .replace(/(\d+)\s*m\b/, "$1 分钟")
+  }
+
   var match
   if ((match = original.match(/^Battery is down to (\d+)%$/))) return "电池电量已降至 " + match[1] + "%"
   if ((match = original.match(/^Process crashed: (.+)$/))) return "进程崩溃：" + match[1]
@@ -1069,8 +1180,12 @@ const notificationLocalizationSource = String.raw`function translate(value, appN
   if ((match = original.match(/^Could not send to (.+)$/))) return "无法发送到 " + match[1]
   if ((match = original.match(/^Transcoding video…$/))) return "正在转码视频…"
   if ((match = original.match(/^Transcoded to (.+)$/))) return "已转码为 " + match[1]
+  if ((match = original.match(/^Click to run (\d+) pending migrations?\.$/))) return "点击运行 " + match[1] + " 个待处理的迁移。"
   if ((match = original.match(/^No saved width found for (.+) on workspace (.+)$/))) return "未找到 " + match[1] + " 在工作区 " + match[2] + " 保存的窗口宽度"
   if ((match = original.match(/^Saved width for (.+) on workspace (.+)$/))) return "已保存 " + match[1] + " 在工作区 " + match[2] + " 的窗口宽度"
+  if ((match = original.match(/^Battery (\d+)%  ·  (.+) to full  ·  (.*)$/))) return "电池 " + match[1] + "%  ·  充满还需 " + durationText(match[2]) + "  ·  " + match[3]
+  if ((match = original.match(/^Battery (\d+)%  ·  (.+) left  ·  (.*)$/))) return "电池 " + match[1] + "%  ·  剩余 " + durationText(match[2]) + "  ·  " + match[3]
+  if ((match = original.match(/^Battery (\d+)%  ·  Holding at (.+)  ·  (.*)$/))) return "电池 " + match[1] + "%  ·  保持在 " + match[2] + "  ·  " + match[3]
 
   var localized = original
     .replace(/\s*·\s*Temp\s+/g, "  ·  温度 ")
@@ -1153,9 +1268,67 @@ ${assignments}
 `;
 }
 
+function syncPluginMenu() {
+  if (!fs.existsSync(pluginMenuSource)) return;
+
+  let content = fs.readFileSync(pluginMenuSource, "utf8");
+  content = replaceRequired(
+    content,
+    String.raw`PLUGIN_ICON=$'\U000f0431'`,
+    `PLUGIN_ICON=$'\\U000f0431'\nPLUGIN_NAMES='${JSON.stringify(pluginNameZh)}'`,
+    "插件菜单结构已变化：名称映射"
+  );
+  content = replaceRequired(
+    content,
+    '--arg icon "$PLUGIN_ICON" \\',
+    '--arg icon "$PLUGIN_ICON" --argjson names "$PLUGIN_NAMES" \\',
+    "插件菜单结构已变化：名称参数"
+  );
+  content = replaceRequired(
+    content,
+    "+ .name +",
+    "+ (\\$names[.name] // .name) +",
+    "插件菜单结构已变化：名称列"
+  );
+  content = replaceRequired(
+    content,
+    "plugins=$(omarchy-plugin-list --json)",
+    `case "\${1:-}" in
+  enable) prompt="启用插件" ;;
+  disable) prompt="禁用插件" ;;
+  clone) prompt="克隆插件" ;;
+  remove) prompt="移除插件" ;;
+  *) prompt="\${1^} plugin" ;;
+esac
+
+plugins=$(omarchy-plugin-list --json)`,
+    "插件菜单结构已变化：提示文案"
+  );
+  content = replaceRequired(
+    content,
+    'omarchy-menu-select "${1^} plugin" <<<"$rows"',
+    'omarchy-menu-select "$prompt" <<<"$rows"',
+    "插件菜单结构已变化：提示传参"
+  );
+  content = replaceRequired(
+    content,
+    'omarchy-notification-send "No plugin to ${1}"',
+    'omarchy-notification-send "没有可执行“${prompt}”操作的插件"',
+    "插件菜单结构已变化：空列表提示"
+  );
+
+  fs.mkdirSync(path.dirname(pluginMenuZh), { recursive: true });
+  const temporary = `${pluginMenuZh}.new-${process.pid}`;
+  fs.writeFileSync(temporary, content, { mode: 0o755 });
+  fs.chmodSync(temporary, 0o755);
+  fs.renameSync(temporary, pluginMenuZh);
+}
+
 function replaceRequired(content, from, to, label) {
-  if (!content.includes(from)) throw new Error(`快捷键脚本结构已变化：${label}`);
-  return content.replace(from, to);
+  if (!content.includes(from)) throw new Error(label);
+  // split/join instead of replace: replacement strings must not be able to
+  // read `$&` or `$'` as patterns, which silently scrambles shell code.
+  return content.split(from).join(to);
 }
 
 function syncKeybindings() {
@@ -1166,19 +1339,19 @@ function syncKeybindings() {
     content,
     "output_keybindings() {\n  output_binding_records | cut -f1\n}",
     keybindingLocalizerSource() + "output_keybindings() {\n  output_binding_records | localize_binding_records | cut -f1\n}",
-    "输出函数"
+    "快捷键脚本结构已变化：输出函数"
   );
   content = replaceRequired(
     content,
     "records=$(output_binding_records)\n  selection=$(cut -f1 <<<\"$records\" |",
     "records=$(output_binding_records | localize_binding_records)\n  selection=$(cut -f1 <<<\"$records\" |",
-    "交互列表"
+    "快捷键脚本结构已变化：交互列表"
   );
   content = replaceRequired(
     content,
     "omarchy-menu-select 'Keybindings' -- --width 800 --height 500",
     "omarchy-menu-select '快捷键' -- --width 800 --height 500",
-    "面板标题"
+    "快捷键脚本结构已变化：面板标题"
   );
 
   fs.mkdirSync(path.dirname(keybindingsZh), { recursive: true });
@@ -1209,6 +1382,10 @@ function syncUpdateScripts() {
       if (!content.includes(from)) throw new Error(`更新脚本结构已变化：${scriptName} / ${label}`);
       content = content.split(from).join(to);
     }
+
+    const bootstrap = 'export PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd):$PATH"\n';
+    if (!/^#![^\n]*\n/.test(content)) throw new Error(`更新脚本缺少 shebang：${scriptName}`);
+    content = content.replace(/^#![^\n]*\n/, match => `${match}\n# 优先调用本目录下的中文子脚本。\n${bootstrap}\n`);
 
     const target = path.join(updateLocalizerDir, scriptName);
     const temporary = `${target}.new-${process.pid}`;
@@ -1399,6 +1576,35 @@ function rebuildPlugin(catalogEntry) {
       if (!/\.(qml|js|json|jsonc)$/.test(file)) return;
       const before = fs.readFileSync(file, "utf8");
       let after = translateText(before);
+      if (sourceId === "omarchy.agents") {
+        const agentsText = {
+          "Panel.qml": [
+            ['if (!(ms > 0)) return "now"', 'if (!(ms > 0)) return "现在"', "剩余时间"],
+            ['return days + "d " + (hours % 24) + "h"', 'return days + " 天 " + (hours % 24) + " 小时"', "剩余天数"],
+            ['return hours + "h " + (minutes % 60) + "m"', 'return hours + " 小时 " + (minutes % 60) + " 分钟"', "剩余小时"],
+            ['return Math.max(1, minutes) + "m"', 'return Math.max(1, minutes) + " 分钟"', "剩余分钟"],
+            ['var text = formatMoney(b.spent, b.currency) + " spent of " + formatMoney(b.funded, b.currency) + " funded"',
+              'var text = "已用 " + formatMoney(b.spent, b.currency) + "，共 " + formatMoney(b.funded, b.currency)', "预付余额明细"],
+            ['text += " · estimated"', 'text += " · 估算"', "余额估算标记"],
+            ['+ " tokens"', '+ " Token"', "每日 Token"],
+            ['+ " prompts · "', '+ " 次提问 · "', "提问计数"],
+            ['+ " sessions"', '+ " 次会话"', "会话计数"],
+            ['return "In " + usage.formatTokenCount(row.input)', 'return "输入 " + usage.formatTokenCount(row.input)', "Token 提示输入"],
+            ['+ " · out "', '+ " · 输出 "', "Token 提示输出"],
+            ['+ " · cache read "', '+ " · 缓存读取 "', "Token 提示缓存读取"],
+            ['+ " · cache write "', '+ " · 缓存写入 "', "Token 提示缓存写入"],
+            ['provider.syncDeviceCount + " device" + (provider.syncDeviceCount === 1 ? "" : "s")',
+              'provider.syncDeviceCount + " 台设备"', "合并来源设备数"]
+          ],
+          "Main.qml": [
+            ['root.syncStatusText = "Usage sync mkdir failed"', 'root.syncStatusText = "用量同步：无法创建同步目录"', "同步目录状态"],
+            ['root.syncStatusText = "Usage sync scan failed"', 'root.syncStatusText = "用量同步：无法读取同步目录"', "同步扫描状态"]
+          ]
+        }[path.basename(file)] || [];
+        for (const [from, to, label] of agentsText) {
+          after = replaceRequired(after, from, to, `Agents 插件结构已变化：${label}`);
+        }
+      }
       if (sourceId === "omarchy.indicators" && path.basename(file) === "Reminder.qml") {
         after = after.replace(
           'tooltip = String(data.tooltip || "")',
@@ -1447,7 +1653,56 @@ function rebuildPlugin(catalogEntry) {
         if (!after.includes(updateCommandSource)) throw new Error("系统更新插件结构已变化：更新入口");
         after = after.replace(updateCommandSource, updateCommandTarget);
       }
+      if (sourceId === "omarchy.osd" && path.basename(file) === "Osd.qml") {
+        const openSource = "  function open(payloadJson) {";
+        const showSource = 'show(p.icon || "", p.message || ""';
+        if (!after.includes(openSource) || !after.includes(showSource)) {
+          throw new Error("屏幕提示插件结构已变化：消息入口");
+        }
+        after = after
+          .replace(openSource, `  function localizedMessage(value) {
+    var messages = {
+      "Microphone muted": "麦克风已静音",
+      "Microphone on": "麦克风已打开",
+      "Shutting down": "正在关机",
+      "Rebooting": "正在重启",
+      "Logging out": "正在注销",
+      "No audio devices found": "未找到音频设备"
+    }
+    var message = String(value || "")
+    if (messages[message]) return messages[message]
+    var match
+    if ((match = message.match(/^(Touchpad|Touchscreen) (enabled|disabled)$/))) {
+      return (match[1] === "Touchpad" ? "触控板" : "触摸屏") + (match[2] === "enabled" ? "已启用" : "已停用")
+    }
+    return message
+  }
+
+${openSource}`)
+          .replace(showSource, 'show(p.icon || "", localizedMessage(p.message || "")');
+      }
+      if (sourceId === "omarchy.dropbox" && path.basename(file) === "Service.qml") {
+        const elideSource = "  function elideStatus(text) {";
+        // 整条语句一起替换：只给表达式加前缀会少一个右括号，QML 直接语法报错。
+        const statusLine = /statusText = String\(parsed\.statusText \|\| \(installed \? "Stopped" : ("[^"]*")\)\)/;
+        const statusMatch = after.match(statusLine);
+        if (!statusMatch || !after.includes(elideSource)) {
+          throw new Error("Dropbox 插件结构已变化：状态文案");
+        }
+        after = after
+          .replace(elideSource, `  function localizedStatus(value) {
+    var messages = { "Not installed": "未安装", "Stopped": "已停止" }
+    var message = String(value || "")
+    return messages[message] || message
+  }
+
+${elideSource}`)
+          .replace(statusLine, `statusText = root.localizedStatus(String(parsed.statusText || (installed ? "Stopped" : ${statusMatch[1]})))`);
+      }
       if (sourceId === "omarchy.menu" && path.basename(file) === "Menu.qml") {
+        // 选择器标题整条替换，理由同 Dropbox：前缀替换会破坏括号配对。
+        const promptLine = /String\(payload\.prompt \|\| \(mode === "input" \? "[^"]*" : "[^"]*"\)\)/;
+        if (!promptLine.test(after)) throw new Error("菜单插件结构已变化：选择器标题");
         after = after
           .replace(
             'message: "Do you want to uninstall " + ((root.deleteTarget && root.deleteTarget.label) || "") + "?"',
@@ -1456,7 +1711,35 @@ function rebuildPlugin(catalogEntry) {
           .replace(
             'confirmText: "卸载"',
             'confirmText: "卸载"\n          cancelText: "取消"'
-          );
+          )
+          .replace(
+            "  function openDmenu(payload) {",
+            `  function localizedPrompt(value) {
+    var names = {
+      "Input": "输入", "Select": "选择",
+      "Enable plugin": "启用插件", "Disable plugin": "禁用插件",
+      "Clone plugin": "克隆插件", "Remove plugin": "移除插件",
+      "Select Webcam": "选择摄像头", "RetroArch core": "RetroArch 核心",
+      "Set timezone": "设置时区", "Remove extra theme": "移除额外主题",
+      "Select TUI to remove": "选择要移除的终端应用",
+      "Select web app to remove": "选择要移除的网页应用",
+      "Select format": "选择格式", "Select resolution": "选择分辨率",
+      "Share folder": "分享文件夹", "Share files": "分享文件",
+      "Select image": "选择图片", "Select media": "选择媒体",
+      "Pick PNG or SVG for About": "为“关于”选择 PNG 或 SVG",
+      "Pick PNG or SVG for screensaver": "为屏保选择 PNG 或 SVG",
+      "Tmux keybindings": "Tmux 快捷键", "Herdr keybindings": "Herdr 快捷键"
+    }
+    var text = String(value || "")
+    var match
+    if (names[text]) return names[text]
+    if ((match = text.match(/^Send to (.+)$/))) return "发送到 " + match[1]
+    return text
+  }
+
+  function openDmenu(payload) {`
+          )
+          .replace(promptLine, match => `root.localizedPrompt(${match})`);
       }
       if (sourceId === "omarchy.clipboard" && path.basename(file) === "Clipboard.qml") {
         const confirmSource = 'confirmText: "删除"';
@@ -1596,8 +1879,16 @@ function syncMenu() {
     if (!(id in defaults)) defaults[id] = item;
   }
   if (defaults["learn.keybindings"]) defaults["learn.keybindings"].action = keybindingsZh;
+  for (const id of ["setup.plugin.enable", "setup.plugin.disable", "setup.plugin.clone", "setup.plugin.remove"]) {
+    if (defaults[id]) defaults[id].action = `${pluginMenuZh} ${id.split(".").pop()}`;
+  }
   if (defaults["update.omarchy"]) {
     defaults["update.omarchy"].action = `omarchy-launch-floating-terminal-with-presentation ${updateZh}`;
+  }
+  for (const [id, script] of [["update.firmware", "omarchy-update-firmware"], ["update.time", "omarchy-update-time"]]) {
+    if (defaults[id]) {
+      defaults[id].action = `omarchy-launch-floating-terminal-with-presentation ${path.join(updateLocalizerDir, script)}`;
+    }
   }
   const header = "// Omarchy 4 简体中文菜单：动作来自当前系统版本，文字由本地汉化保留。\n";
   fs.mkdirSync(path.dirname(menuUser), { recursive: true });
@@ -1632,6 +1923,7 @@ for (const id of pluginIds) {
 }
 syncMenu();
 syncKeybindings();
+syncPluginMenu();
 syncShellSettings();
 fs.writeFileSync(path.join(stateDir, "last-sync"), new Date().toISOString() + "\n");
 

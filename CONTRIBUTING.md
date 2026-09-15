@@ -21,7 +21,7 @@
 - `~/.config/omarchy/plugins/` 中生成的 Omarchy 插件副本
 - 通知历史、日志、截图或包含个人信息的配置
 - `/usr/share/omarchy` 的完整源码副本
-- API 密钥、令牌、网络密码或位置历史
+- API 密钥、Token、网络密码或位置历史
 
 ## 报告兼容问题
 

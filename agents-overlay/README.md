@@ -9,7 +9,7 @@
 - Codex 兼容层：把已废弃的 `untrusted` 审批值转换为当前 CLI 接受的值，并为 app-server 初始化留出更合理的等待时间。
 - Grok/Kimi 深浅主题图标。
 
-未配置或登录失效的服务只会生成不可用记录，Agents 插件会将其隐藏。访问令牌不会写入 `~/.local/state/omarchy/agents/usage/` 的展示数据。
+未配置或登录失效的服务只会生成不可用记录，Agents 插件会将其隐藏。访问 Token 不会写入 `~/.local/state/omarchy/agents/usage/` 的展示数据。
 
 Kimi 配置示例：
 
