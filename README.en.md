@@ -182,6 +182,10 @@ On an Omarchy system, the tests also generate an isolated copy from the currentl
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing translations.
 
+## Other Language Versions
+
+- [Traditional Chinese (Taiwan) — omarchy-zh-tw](https://github.com/Vik1n9/omarchy-zh-tw): A community derivative maintained by [Vik1n9](https://github.com/Vik1n9), based on this project and adapted for Taiwanese terminology, the `zh_TW` locale, and local date formats. Thanks to the author for the translation and contribution.
+
 ## Disclaimer
 
 This is a community project and is not affiliated with the official Omarchy project. Omarchy and its source code are governed by their upstream licenses. This repository contains only the installation logic, synchronization logic, and Chinese translations written for this project, and is licensed under the MIT License.
