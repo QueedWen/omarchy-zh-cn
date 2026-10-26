@@ -34,6 +34,34 @@ while IFS= read -r manifest; do
     "$manifest" >/dev/null
 done < <(find "$plugin_root" -mindepth 2 -maxdepth 2 -name manifest.json | sort)
 
+# A cloned menu may receive the bar-scoped API, which has no appLibrary.
+# Verify the generated binding with both API shapes and after replacement.
+node - "$plugin_root/testuser.menu" <<'NODE'
+const assert = require("node:assert/strict")
+const fs = require("node:fs")
+const vm = require("node:vm")
+const path = require("node:path")
+const plugin = process.argv[2]
+const menu = fs.readFileSync(path.join(plugin, "Menu.qml"), "utf8")
+const binding = menu.match(/readonly property var appLibrary: (.+)/)[1]
+const localAppLibrary = { entries: ["chatgpt", "Clash Verge"] }
+const root = { shell: { appLibrary: null } }
+const context = vm.createContext({ root, localAppLibrary })
+const evaluate = () => vm.runInContext(binding, context)
+assert.equal(evaluate(), localAppLibrary)
+const hostedLibrary = { entries: ["Firefox"] }
+root.shell = { appLibrary: hostedLibrary }
+assert.equal(evaluate(), hostedLibrary)
+root.shell = {}
+assert.equal(evaluate(), localAppLibrary)
+root.shell = null
+assert.equal(evaluate(), localAppLibrary)
+for (const [source, target] of [["AppLibrary.qml", "LocalAppLibrary.qml"], ["AppSearch.js", "AppSearch.js"]]) {
+  assert.deepEqual(fs.readFileSync(path.join(plugin, target)),
+    fs.readFileSync(path.join("/usr/share/omarchy/shell/services", source)))
+}
+NODE
+
 menu_file="$sandbox_home/.config/omarchy/extensions/omarchy-menu.jsonc"
 node - "$menu_file" "$sandbox_home" <<'NODE'
 const fs = require("fs")
