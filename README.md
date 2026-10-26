@@ -182,6 +182,10 @@ omarchy-zh-sync
 
 贡献翻译前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+## 其他语言版本
+
+- [繁體中文（台灣）— omarchy-zh-tw](https://github.com/Vik1n9/omarchy-zh-tw)：由 [Vik1n9](https://github.com/Vik1n9) 基于本项目维护的社区衍生版本，采用台湾用语、`zh_TW` 地区设置和日期格式。感谢作者的翻译与贡献。
+
 ## 声明
 
 这是社区项目，与 Omarchy 官方无隶属关系。Omarchy 及其源码遵循其上游许可证；本仓库只包含本项目编写的安装逻辑、同步逻辑和中文翻译，采用 MIT 许可证。
