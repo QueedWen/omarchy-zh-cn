@@ -1568,7 +1568,33 @@ ${functionSource}`)
       let menu = fs.readFileSync(menuFile, "utf8");
       if (!menu.includes(originalBinding)) throw new Error("菜单应用接口结构已变化，拒绝安装不兼容补丁");
       menu = menu.replace(originalBinding,
-        'LocalAppLibrary { id: localAppLibrary }\n  readonly property var appLibrary: (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : localAppLibrary');
+        `LocalAppLibrary { id: localAppLibrary }
+  function usableHostAppLibrary() {
+    try {
+      var api = root.shell ? root.shell.appLibrary : null
+      // A revoked QObject proxy may remain truthy after its owner is destroyed.
+      if (!api || !api.ownerPluginId) return null
+      for (var name of ["sortedEntries", "entryName", "entrySubtext", "iconSource", "refreshIcons", "launch", "remove"]) {
+        if (typeof api[name] !== "function") return null
+      }
+      return api
+    } catch (error) { return null }
+  }
+  property int appLibraryRevision: 0
+  readonly property var appLibrary: { root.appLibraryRevision; return root.usableHostAppLibrary() || localAppLibrary }
+  // QObject destruction can clear a var without re-evaluating its binding.
+  Timer {
+    interval: 500
+    running: root.opened
+    repeat: true
+    onTriggered: root.appLibraryRevision++
+  }
+  onAppLibraryChanged: {
+    if (root.appLibrary && root.providersLoaded && root.providersLoaded["apps"]) root.mergeAppRows()
+  }`);
+      const openHook = '  function openExistingMenu(initialMenu) {';
+      if (!menu.includes(openHook)) throw new Error("菜单打开流程结构已变化");
+      menu = menu.replace(openHook, openHook + '\n    root.appLibraryRevision++');
       fs.writeFileSync(menuFile, menu);
       for (const [source, target] of [["AppLibrary.qml", "LocalAppLibrary.qml"], ["AppSearch.js", "AppSearch.js"]]) {
         fs.copyFileSync(path.join("/usr/share/omarchy/shell/services", source), path.join(stage, target));

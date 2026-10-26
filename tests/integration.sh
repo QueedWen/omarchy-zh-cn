@@ -44,14 +44,26 @@ const path = require("node:path")
 const plugin = process.argv[2]
 const menu = fs.readFileSync(path.join(plugin, "Menu.qml"), "utf8")
 const binding = menu.match(/readonly property var appLibrary: (.+)/)[1]
+const helper = menu.match(/  function usableHostAppLibrary\(\) \{[\s\S]*?\n  \}/)[0]
 const localAppLibrary = { entries: ["chatgpt", "Clash Verge"] }
-const root = { shell: { appLibrary: null } }
+const root = { shell: { appLibrary: null }, appLibraryRevision: 0 }
 const context = vm.createContext({ root, localAppLibrary })
-const evaluate = () => vm.runInContext(binding, context)
+root.usableHostAppLibrary = vm.runInContext("(" + helper.trim() + ")", context)
+const evaluate = () => vm.runInContext("(() => " + binding + ")()", context)
 assert.equal(evaluate(), localAppLibrary)
-const hostedLibrary = { entries: ["Firefox"] }
+const hostedLibrary = { ownerPluginId: "testuser.menu", entries: ["Firefox"] }
+for (const method of ["sortedEntries", "entryName", "entrySubtext", "iconSource", "refreshIcons", "launch", "remove"]) hostedLibrary[method] = () => {}
 root.shell = { appLibrary: hostedLibrary }
 assert.equal(evaluate(), hostedLibrary)
+// Reproduce #6: a proxy can remain truthy after losing its owner.
+hostedLibrary.ownerPluginId = null
+assert.equal(evaluate(), localAppLibrary)
+hostedLibrary.ownerPluginId = "testuser.menu"
+assert.equal(evaluate(), hostedLibrary)
+root.shell = { appLibrary: { ownerPluginId: "testuser.menu" } }
+assert.equal(evaluate(), localAppLibrary)
+root.shell = { appLibrary: new Proxy({}, { get() { throw new Error("QObject destroyed") } }) }
+assert.equal(evaluate(), localAppLibrary)
 root.shell = {}
 assert.equal(evaluate(), localAppLibrary)
 root.shell = null
@@ -198,5 +210,7 @@ if rg -n '/home/[[:alnum:]_.-]+|/Users/[[:alnum:]_.-]+' "$sandbox_home"; then
   echo "生成结果包含开发机器信息。" >&2
   exit 1
 fi
+
+"$ROOT_DIR/tests/qml-app-library.sh" "$plugin_root/testuser.menu"
 
 echo "Omarchy 隔离集成检查通过。"
