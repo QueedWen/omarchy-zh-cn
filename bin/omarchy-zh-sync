@@ -970,6 +970,11 @@ const notificationLocalizationSource = String.raw`function translate(value, appN
   if (String(appName || "").toLowerCase() !== "omarchy-action") return original
 
   var exact = {
+    "Editing Cloned Plugin": "正在编辑克隆插件",
+    "Original plugin has been replace by clone.": "原插件已由克隆插件替代。",
+    "Original plugin has been replaced by clone.": "原插件已由克隆插件替代。",
+    "Install Dictation with Voxtype": "安装 Voxtype 语音输入",
+    "Click to install voice dictation for Omarchy.": "点击为 Omarchy 安装语音输入。",
     "URL copied to clipboard": "网址已复制到剪贴板",
     "Update System": "更新系统",
     "Click to update the system.": "点击更新系统。",
@@ -1556,6 +1561,18 @@ ${functionSource}`)
         path.join(stage, "components", "NotificationLocalization.js"),
         notificationLocalizationSource
       );
+    }
+    if (sourceId === "omarchy.menu") {
+      const menuFile = path.join(stage, "Menu.qml");
+      const originalBinding = 'readonly property var appLibrary: root.shell ? root.shell.appLibrary : null';
+      let menu = fs.readFileSync(menuFile, "utf8");
+      if (!menu.includes(originalBinding)) throw new Error("菜单应用接口结构已变化，拒绝安装不兼容补丁");
+      menu = menu.replace(originalBinding,
+        'LocalAppLibrary { id: localAppLibrary }\n  readonly property var appLibrary: (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : localAppLibrary');
+      fs.writeFileSync(menuFile, menu);
+      for (const [source, target] of [["AppLibrary.qml", "LocalAppLibrary.qml"], ["AppSearch.js", "AppSearch.js"]]) {
+        fs.copyFileSync(path.join("/usr/share/omarchy/shell/services", source), path.join(stage, target));
+      }
     }
     if (sourceId === "omarchy.emojis") localizeEmojiKeywords(stage);
     if (sourceId === "omarchy.agents") applyAgentsOverlay(stage, targetDir);
