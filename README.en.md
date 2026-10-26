@@ -115,7 +115,7 @@ cd omarchy-zh-cn
 The installer will:
 
 1. Check the Omarchy version and dependencies.
-2. Create 22 user plugin clones through the official `omarchy plugin clone` command.
+2. Create 26 user plugin clones through the official `omarchy plugin clone` command.
 3. Install the localization synchronizer and generate the localized plugins.
 4. Install the Codex/Grok/Kimi usage extension and theme marks for the Agents plugin.
 5. Configure metric units for weather data.
@@ -181,6 +181,10 @@ The project writes only to the following user directories:
 On an Omarchy system, the tests also generate an isolated copy from the currently installed system plugins under a temporary `HOME`; they do not touch the real user configuration.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing translations.
+
+## Other Language Versions
+
+- [Traditional Chinese (Taiwan) — omarchy-zh-tw](https://github.com/Vik1n9/omarchy-zh-tw): A community derivative maintained by [Vik1n9](https://github.com/Vik1n9), based on this project and adapted for Taiwanese terminology, the `zh_TW` locale, and local date formats. Thanks to the author for the translation and contribution.
 
 ## Disclaimer
 

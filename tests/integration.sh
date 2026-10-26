@@ -24,7 +24,7 @@ HOME="$sandbox_home" USER=testuser \
 
 plugin_root="$sandbox_home/.config/omarchy/plugins"
 plugin_count=$(find "$plugin_root" -mindepth 2 -maxdepth 2 -name manifest.json | wc -l)
-[[ $plugin_count -eq 22 ]] || {
+[[ $plugin_count -eq 26 ]] || {
   echo "生成的插件数量不正确：$plugin_count" >&2
   exit 1
 }
@@ -89,6 +89,43 @@ for (const [english, chinese] of Object.entries({
 }
 assert.equal(translate("An unknown message", "omarchy-action"), "An unknown message")
 NODE
+
+node - "$plugin_root" "$sandbox_home" <<'NODE'
+const assert = require("node:assert/strict")
+const fs = require("node:fs")
+const path = require("node:path")
+const vm = require("node:vm")
+const [plugins, home] = process.argv.slice(2)
+const dropbox = require(path.join(plugins, "testuser.dropbox/Model.js"))
+const now = 2_000_000_000_000
+assert.equal(dropbox.relativeTime(now / 1000 - 120, now), "2 分钟前")
+assert.equal(dropbox.relativeTime(now / 1000 - 7200, now), "2 小时前")
+assert.equal(dropbox.relativeTime(now / 1000 - 86400 * 40, now), "1 个月前")
+assert.ok(dropbox.fileMeta({modifiedTs: now / 1000 - 120, folder:"My Files"}, now).includes("My Files"))
+const model = vm.createContext({})
+vm.runInContext(fs.readFileSync(path.join(plugins, "testuser.tailscale/Model.js"), "utf8"), model)
+const peer = model.peerFromStatus("device-1", {HostName:"My Laptop", DNSName:"host.example.ts.net.", TailscaleIPs:["100.1.2.3"], Online:true, OS:"linux"})
+assert.equal(peer.DisplayName, "My Laptop")
+assert.equal(peer.DNSName, "host.example.ts.net")
+assert.equal(peer.TailscaleIPs[0], "100.1.2.3")
+assert.equal(peer.Online, true)
+for (const [file, expected] of [
+  ["testuser.dropbox/Panel.qml", "没有已同步的文件。"],
+  ["testuser.tailscale/Panel.qml", "此私有网络中没有设备。"],
+  ["testuser.media/BarWidget.qml", "暂无正在播放的媒体"],
+  ["testuser.microphone/Microphone.qml", "麦克风已静音"]
+]) assert.ok(fs.readFileSync(path.join(plugins, file), "utf8").includes(expected))
+for (const script of ["omarchy-menu-timezone", "omarchy-menu-share", "omarchy-setup-security-sshd"]) {
+  const original = fs.readFileSync(path.join("/usr/share/omarchy/bin", script), "utf8")
+  const localized = fs.readFileSync(path.join(home, ".local/share/omarchy-zh-cn/bin", script), "utf8")
+  // Translation must preserve privileged operations, command options and paths.
+  const privilegedLines = text => text.split("\n").filter(line => /^\s*sudo /.test(line))
+  assert.deepEqual(privilegedLines(localized), privilegedLines(original))
+}
+NODE
+for helper in omarchy-menu-timezone omarchy-menu-share omarchy-setup-security-sshd; do
+  bash -n "$sandbox_home/.local/share/omarchy-zh-cn/bin/$helper"
+done
 
 menu_file="$sandbox_home/.config/omarchy/extensions/omarchy-menu.jsonc"
 node - "$menu_file" "$sandbox_home" <<'NODE'
