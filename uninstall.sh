@@ -24,6 +24,7 @@ UPDATE_HELPERS=(
   omarchy-update-restart omarchy-update-dev omarchy-update-stay-awake
   omarchy-update-analyze-logs omarchy-hook omarchy-system-reboot
   omarchy-restart-shell
+  omarchy-menu-timezone omarchy-menu-share omarchy-setup-security-sshd
 )
 ASSUME_YES=0
 

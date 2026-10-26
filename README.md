@@ -115,7 +115,7 @@ cd omarchy-zh-cn
 安装器会：
 
 1. 检查 Omarchy 版本和依赖。
-2. 使用官方 `omarchy plugin clone` 创建 22 个用户插件克隆。
+2. 使用官方 `omarchy plugin clone` 创建基础用户插件克隆，并在同步时生成 4 个可选插件，共 26 个中文插件。
 3. 安装本地化同步器并生成中文插件。
 4. 为 Agents 插件安装 Codex/Grok/Kimi 用量收集扩展及主题图标。
 5. 将天气单位设为公制。
@@ -128,6 +128,8 @@ cd omarchy-zh-cn
 ```bash
 ./install.sh --adopt-existing
 ```
+
+可选的 Dropbox、Tailscale、媒体和麦克风插件只替换已配置的组件，不会自动加入状态栏。时区、文件分享和 SSH 设置从 Omarchy 菜单打开时使用中文向导。
 
 ## 手动同步
 

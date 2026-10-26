@@ -36,7 +36,8 @@ const pluginIds = [
   "omarchy.tray", "omarchy.indicators", "omarchy.system-update", "omarchy.lock", "omarchy.polkit",
   "omarchy.clipboard", "omarchy.emojis", "omarchy.image-picker",
   "omarchy.reminders", "omarchy.speedtest", "omarchy.disk-speedtest",
-  "omarchy.wifiqr"
+  "omarchy.wifiqr", "omarchy.dropbox", "omarchy.tailscale",
+  "omarchy.media", "omarchy.microphone"
 ];
 
 const supportedArgs = new Set(["--quiet", "--no-restart", "--adopt-existing", "--help"]);
@@ -54,6 +55,94 @@ if (process.argv.includes("--help")) {
 }
 
 const zh = {
+  "Pause syncing": "暂停同步",
+  "Resume syncing": "恢复同步",
+  "Syncing paused": "同步已暂停",
+  "Stored": "已存储",
+  "RECENT FILES": "最近同步的文件",
+  "No synced files found.": "没有已同步的文件。",
+  "Login to Dropbox": "登录 Dropbox",
+  "Dropbox CLI is not installed": "未安装 Dropbox 命令行工具",
+  "Start the authentication flow": "开始登录认证",
+  "Install Dropbox from the service menu": "从服务菜单安装 Dropbox",
+  "Untitled": "未命名",
+  "Unknown time": "时间未知",
+  "Just now": "刚刚",
+  "Filing files": "正在整理文件",
+  "Distributing data": "正在分发数据",
+  "Shuffling folders": "正在整理文件夹",
+  "Boxing bytes": "正在打包数据",
+  "Sorting stuff": "正在分类文件",
+  "Syncing secrets": "正在同步数据",
+  "Packing packets": "正在打包数据包",
+  "Moving memories": "正在传输文件",
+  "Wrangling revisions": "正在整理版本",
+  "Cataloging chaos": "正在建立文件索引",
+  "Failed to parse Dropbox status": "无法解析 Dropbox 状态",
+  "Failed to read Dropbox status": "无法读取 Dropbox 状态",
+  "Could not read Dropbox status": "无法读取 Dropbox 状态",
+  "Opened Dropbox login": "已打开 Dropbox 登录",
+  "Starting Dropbox login…": "正在启动 Dropbox 登录…",
+  "Dropbox login failed": "Dropbox 登录失败",
+  "Dropbox command failed": "Dropbox 命令执行失败",
+  "Not installed": "未安装",
+  "Unavailable": "不可用",
+  "Encrypting connections": "正在加密连接",
+  "Sending secrets": "正在安全传输数据",
+  "Guarding wires": "正在保护连接",
+  "Braiding packets": "正在整理数据包",
+  "Polishing tunnels": "正在优化隧道",
+  "Hiding routes": "正在保护路由",
+  "Sealing ports": "正在保护端口",
+  "Sorting tailnets": "正在整理私有网络",
+  "Shuffling keys": "正在更新密钥",
+  "Watching machines": "正在检查设备",
+  "Turn Tailscale off": "关闭 Tailscale",
+  "Turn Tailscale on": "开启 Tailscale",
+  "Authorize this device": "授权此设备",
+  "Choose Mullvad region": "选择 Mullvad 地区",
+  "Tailscale is disconnected": "Tailscale 已断开连接",
+  "Tailscale CLI is not installed or not on PATH.": "未安装 Tailscale 命令行工具，或该命令不在 PATH 中。",
+  "Search regions": "搜索地区",
+  "No Mullvad regions found.": "未找到 Mullvad 地区。",
+  "No machines found on this tailnet.": "此私有网络中没有设备。",
+  "Authorize Tailscale operator": "授权 Tailscale 操作权限",
+  "Allow this user to operate this Tailscale profile": "允许当前用户管理此 Tailscale 配置",
+  "Account": "账户",
+  "Unknown account": "未知账户",
+  "Send files": "发送文件",
+  "CONNECTIONS": "连接",
+  "EXIT NODES": "出口节点",
+  "MACHINES": "设备",
+  "Account switch failed": "账户切换失败",
+  "Authorize Tailscale operator to show connections": "请授权 Tailscale 操作权限以显示连接",
+  "Authorizing Tailscale operator...": "正在授权 Tailscale 操作权限…",
+  "Could not list Tailscale connections": "无法获取 Tailscale 连接列表",
+  "Exit node selection failed": "出口节点选择失败",
+  "Failed to parse tailscale status": "无法解析 Tailscale 状态",
+  "Needs login": "需要登录",
+  "Starting Tailscale login…": "正在启动 Tailscale 登录…",
+  "Status error": "状态错误",
+  "Tailscale authorization failed": "Tailscale 授权失败",
+  "Tailscale command failed": "Tailscale 命令执行失败",
+  "Tailscale login link not available yet": "Tailscale 登录链接尚未就绪",
+  "Tailscale operator authorized": "已授权 Tailscale 操作权限",
+  "Nothing playing": "暂无正在播放的媒体",
+  "Media source": "媒体来源",
+  "Media": "媒体",
+  "MPRIS media control service": "MPRIS 媒体控制服务",
+  "MPRIS now-playing with playback controls": "媒体播放信息与播放控制",
+  "Microphone muted": "麦克风已静音",
+  "Microphone in use": "麦克风正在使用",
+  "Microphone live": "麦克风已开启",
+  "Mic input state and mute toggle": "麦克风状态与静音切换",
+  "Refresh interval (seconds)": "刷新间隔（秒）",
+  "Files": "文件",
+  "Dropbox status, storage usage, login, and recent synced files in the Omarchy bar.": "查看 Dropbox 状态、存储用量、登录和最近同步的文件。",
+  "Log in to Dropbox, view storage usage, and open recent synced files.": "登录 Dropbox、查看存储用量和打开最近同步的文件。",
+  "Tailscale status, connection switching, machine browsing, and quick copy actions in the Omarchy bar.": "查看 Tailscale 状态、切换连接、浏览设备及复制设备信息。",
+  "Toggle Tailscale, switch connections, browse machines, and copy machine IPs or names.": "开关 Tailscale、切换连接、浏览设备及复制设备 IP 或名称。",
+  "Remove": "卸载", "Sudoless Docker": "免 sudo 使用 Docker",
   "Audio": "音频", "OUTPUT": "输出", "INPUT": "输入", "SOURCES": "应用音源",
   "Output": "输出", "Source": "音源", "Stream": "应用音频", "Microphone": "麦克风",
   "Mute": "静音", "Unmute": "取消静音", "Muted": "已静音", "Silenced": "无声",
@@ -1203,9 +1292,153 @@ function translateText(content) {
   return result;
 }
 
+const workflowScriptReplacements = {
+  "omarchy-menu-timezone": [
+    [
+      "\"Set timezone\"",
+      "\"设置时区\"",
+      "时区标题"
+    ]
+  ],
+  "omarchy-menu-share": [
+    [
+      "\"Share folder\"",
+      "\"分享文件夹\"",
+      "文件夹选择标题"
+    ],
+    [
+      "\"Share files\"",
+      "\"分享文件\"",
+      "文件选择标题"
+    ]
+  ],
+  "omarchy-setup-security-sshd": [
+    [
+      "Installing and starting the OpenSSH server...",
+      "正在安装并启动 OpenSSH 服务…",
+      "Installing and starting the OpenSSH server..."
+    ],
+    [
+      "UFW is not installed; skipping firewall rule.",
+      "未安装 UFW，跳过防火墙规则。",
+      "UFW is not installed; skipping firewall rule."
+    ],
+    [
+      "Opening the SSH port in the firewall (rate limited against brute force)...",
+      "正在开放 SSH 端口并启用防暴力破解限速…",
+      "Opening the SSH port in the firewall (rate limited against brute force)..."
+    ],
+    [
+      "Not a valid SSH public key:",
+      "SSH 公钥无效：",
+      "Not a valid SSH public key:"
+    ],
+    [
+      "Key already authorized:",
+      "公钥已经授权：",
+      "Key already authorized:"
+    ],
+    [
+      "Authorized key:",
+      "已授权公钥：",
+      "Authorized key:"
+    ],
+    [
+      "GitHub username> ",
+      "GitHub 用户名> ",
+      "GitHub username> "
+    ],
+    [
+      "No GitHub username given.",
+      "未填写 GitHub 用户名。",
+      "No GitHub username given."
+    ],
+    [
+      "Fetching keys from",
+      "正在获取公钥：",
+      "Fetching keys from"
+    ],
+    [
+      "Could not fetch any SSH keys for GitHub user",
+      "无法获取该 GitHub 用户的 SSH 公钥：",
+      "Could not fetch any SSH keys for GitHub user"
+    ],
+    [
+      "No valid SSH keys found for GitHub user",
+      "未找到该 GitHub 用户的有效 SSH 公钥：",
+      "No valid SSH keys found for GitHub user"
+    ],
+    [
+      "Public key> ",
+      "公钥> ",
+      "Public key> "
+    ],
+    [
+      "No SSH key given.",
+      "未填写 SSH 公钥。",
+      "No SSH key given."
+    ],
+    [
+      "Cannot disable SSH password authentication without an authorized key.",
+      "没有已授权的公钥，无法禁用 SSH 密码认证。",
+      "Cannot disable SSH password authentication without an authorized key."
+    ],
+    [
+      "Disabling SSH password authentication, now that a key is authorized...",
+      "公钥已授权，正在禁用 SSH 密码认证…",
+      "Disabling SSH password authentication, now that a key is authorized..."
+    ],
+    [
+      "sshd rejected the hardening config; removing it and leaving passwords on.",
+      "sshd 拒绝了安全配置；正在移除该配置并保留密码认证。",
+      "sshd rejected the hardening config; removing it and leaving passwords on."
+    ],
+    [
+      "sshd did not apply the password-authentication restrictions; removing the ineffective config.",
+      "sshd 未应用密码认证限制；正在移除无效配置。",
+      "sshd did not apply the password-authentication restrictions; removing the ineffective config."
+    ],
+    [
+      "Setting up SSH server access with key-based authentication.",
+      "正在设置使用公钥认证的 SSH 服务。",
+      "Setting up SSH server access with key-based authentication."
+    ],
+    [
+      "Grab key from GitHub",
+      "从 GitHub 获取公钥",
+      "Grab key from GitHub"
+    ],
+    [
+      "Paste key manually",
+      "手动粘贴公钥",
+      "Paste key manually"
+    ],
+    [
+      "How would you like to add your SSH key?",
+      "请选择添加 SSH 公钥的方式",
+      "How would you like to add your SSH key?"
+    ],
+    [
+      "Perfect! The SSH server is running and your key is authorized.",
+      "SSH 服务已启动，公钥已授权。",
+      "Perfect! The SSH server is running and your key is authorized."
+    ],
+    [
+      "Password logins are off; this machine now accepts authorized keys only.",
+      "密码登录已关闭，此设备仅接受已授权的公钥。",
+      "Password logins are off; this machine now accepts authorized keys only."
+    ],
+    [
+      "You can now connect with:",
+      "现在可以使用以下命令连接：",
+      "You can now connect with:"
+    ]
+  ]
+};
+
 function syncUpdateScripts() {
   fs.mkdirSync(updateLocalizerDir, { recursive: true });
-  for (const [scriptName, replacements] of Object.entries(updateScriptReplacements)) {
+  for (const [scriptName, replacements] of Object.entries({ ...updateScriptReplacements, ...workflowScriptReplacements })) {
     const source = path.join(updateSourceDir, scriptName);
     if (!fs.existsSync(source)) throw new Error(`找不到 Omarchy 更新脚本：${source}`);
 
@@ -1404,6 +1637,13 @@ function rebuildPlugin(catalogEntry) {
       if (!/\.(qml|js|json|jsonc)$/.test(file)) return;
       const before = fs.readFileSync(file, "utf8");
       let after = translateText(before);
+      if (sourceId === "omarchy.dropbox" && path.basename(file) === "Model.js") {
+        after = after.replace(' + " of " + ', ' + " / " + ');
+        for (const [from, to] of [["m ago", " 分钟前"], ["h ago", " 小时前"], ["d ago", " 天前"], ["mo ago", " 个月前"], ["y ago", " 年前"]]) {
+          after = after.split(JSON.stringify(from)).join(JSON.stringify(to));
+        }
+      }
+
       if (sourceId === "omarchy.indicators" && path.basename(file) === "Reminder.qml") {
         after = after.replace(
           'tooltip = String(data.tooltip || "")',
@@ -1616,6 +1856,13 @@ function syncMenu() {
   if (defaults["update.omarchy"]) {
     defaults["update.omarchy"].action = `omarchy-launch-floating-terminal-with-presentation ${updateZh}`;
   }
+  for (const item of Object.values(defaults)) {
+    if (typeof item.action !== "string") continue;
+    for (const script of Object.keys(workflowScriptReplacements)) {
+      const expression = new RegExp("(^|\\s)" + script + "(?=\\s|$)", "g");
+      item.action = item.action.replace(expression, (_, prefix) => prefix + JSON.stringify(path.join(updateLocalizerDir, script)));
+    }
+  }
   const header = "// Omarchy 4 简体中文菜单：动作来自当前系统版本，文字由本地汉化保留。\n";
   fs.mkdirSync(path.dirname(menuUser), { recursive: true });
   fs.writeFileSync(menuUser, header + JSON.stringify(defaults, null, 2) + "\n");
@@ -1632,6 +1879,12 @@ function syncShellSettings() {
     }
   }
 
+  const extraPlugins = new Set(["omarchy.dropbox", "omarchy.tailscale", "omarchy.media", "omarchy.microphone"]);
+  for (const entries of [...Object.values(shell.bar?.layout || {}), shell.plugins || []]) {
+    for (const entry of entries) {
+      if (extraPlugins.has(entry.id)) entry.id = `${user}.${entry.id.slice("omarchy.".length)}`;
+    }
+  }
   const temporary = `${shellPath}.zh-new-${process.pid}`;
   fs.writeFileSync(temporary, JSON.stringify(shell, null, 2) + "\n");
   fs.renameSync(temporary, shellPath);
