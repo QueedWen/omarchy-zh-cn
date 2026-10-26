@@ -62,6 +62,22 @@ for (const [source, target] of [["AppLibrary.qml", "LocalAppLibrary.qml"], ["App
 }
 NODE
 
+node - "$plugin_root/testuser.notifications/components/NotificationLocalization.js" <<'NODE'
+const assert = require("node:assert/strict")
+const { translate } = require(process.argv[2])
+for (const [english, chinese] of Object.entries({
+  "Editing Cloned Plugin": "正在编辑克隆插件",
+  "Original plugin has been replace by clone.": "原插件已由克隆插件替代。",
+  "Original plugin has been replaced by clone.": "原插件已由克隆插件替代。",
+  "Install Dictation with Voxtype": "安装 Voxtype 语音输入",
+  "Click to install voice dictation for Omarchy.": "点击为 Omarchy 安装语音输入。"
+})) {
+  assert.equal(translate(english, "omarchy-action"), chinese)
+  assert.equal(translate(english, "third-party-app"), english)
+}
+assert.equal(translate("An unknown message", "omarchy-action"), "An unknown message")
+NODE
+
 menu_file="$sandbox_home/.config/omarchy/extensions/omarchy-menu.jsonc"
 node - "$menu_file" "$sandbox_home" <<'NODE'
 const fs = require("fs")
