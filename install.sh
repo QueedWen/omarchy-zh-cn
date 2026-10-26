@@ -31,6 +31,7 @@ PLUGIN_IDS=(
   omarchy.system-update omarchy.lock omarchy.polkit omarchy.clipboard
   omarchy.emojis omarchy.image-picker omarchy.reminders omarchy.speedtest
   omarchy.disk-speedtest omarchy.wifiqr
+  omarchy.dropbox omarchy.tailscale omarchy.media omarchy.microphone
 )
 
 usage() {
@@ -151,6 +152,9 @@ for source_id in "${PLUGIN_IDS[@]}"; do
   manifest="$target_dir/manifest.json"
 
   if [[ ! -e $target_dir ]]; then
+    case "$source_id" in
+      omarchy.dropbox|omarchy.tailscale|omarchy.media|omarchy.microphone) continue ;;
+    esac
     omarchy plugin clone "$source_id"
     mark_managed "$manifest" "$source_id"
     continue

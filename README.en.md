@@ -115,7 +115,7 @@ cd omarchy-zh-cn
 The installer will:
 
 1. Check the Omarchy version and dependencies.
-2. Create 22 user plugin clones through the official `omarchy plugin clone` command.
+2. Create 26 user plugin clones through the official `omarchy plugin clone` command.
 3. Install the localization synchronizer and generate the localized plugins.
 4. Install the Codex/Grok/Kimi usage extension and theme marks for the Agents plugin.
 5. Configure metric units for weather data.
