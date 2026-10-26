@@ -4,6 +4,14 @@
 
 An unofficial Simplified Chinese localization project for Omarchy 4. It generates user-scoped plugin clones from the Omarchy sources currently installed on the machine. It never modifies `/usr/share/omarchy` and does not redistribute Omarchy plugin source code in this repository.
 
+## Version and Compatibility
+
+Current project version: **0.2.0**. Project versions are independent of Omarchy system versions.
+
+- [Releases and source downloads](https://github.com/QueedWen/omarchy-zh-cn/releases)
+- [Changelog](CHANGELOG.md) · [Release and backup guide (Chinese)](docs/releases.md)
+- Validated on Omarchy **4.0.6-1**. The relevant application-library sources for 4.0.3 were checked for compatibility, but full testing on that version is still pending. See the [validation scope](docs/app-library-validation.md).
+
 ## Preview
 
 These screenshots were captured on an Omarchy 4 desktop with this project installed. Wallpapers, themes, and weather data will vary by environment.

@@ -4,6 +4,14 @@
 
 面向 Omarchy 4 的非官方简体中文本地化项目。它从本机当前安装的 Omarchy 源文件生成用户级插件克隆，不修改 `/usr/share/omarchy`，也不在仓库中重新分发 Omarchy 的插件源码。
 
+## 版本与兼容性
+
+当前项目版本：**0.2.0**。项目版本独立于 Omarchy 的系统版本。
+
+- [正式版本与源码下载](https://github.com/QueedWen/omarchy-zh-cn/releases)
+- [更新记录](CHANGELOG.md) · [版本发布与备份说明](docs/releases.md)
+- 本版在 Omarchy **4.0.6-1** 上验证。4.0.3 的相关应用库源码已核对兼容，但仍缺少完整实机复测；详细范围见[验证记录](docs/app-library-validation.md)。
+
 ## 效果预览
 
 以下截图来自实际安装本项目的 Omarchy 4 桌面。具体壁纸、主题和天气数据会因用户环境而异。
